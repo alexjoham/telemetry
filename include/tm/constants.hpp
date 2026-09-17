@@ -1,7 +1,7 @@
 #ifndef TM_CONSTANTS_HPP
 #define TM_CONSTANTS_HPP
 
-#include <cstddef>
+#include <initializer_list>
 
 namespace tm_core {
 
