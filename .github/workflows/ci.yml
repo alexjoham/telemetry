@@ -8,12 +8,13 @@ on:
 
 jobs:
   build-and-test:
-    name: ${{ matrix.cxx }}
+    name: ${{ matrix.cxx }} (${{ matrix.build_type }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         cxx: [g++, clang++]
+        build_type: [Debug, Release]
 
     steps:
       - name: Check out the repository
@@ -28,7 +29,7 @@ jobs:
         run: >
           cmake -S . -B build
           -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Build
         run: cmake --build build --parallel
@@ -37,15 +38,19 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
   asan:
-    name: ASan + UBSan
+    name: ASan + UBSan (${{ matrix.cxx }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [g++, clang++]
 
     steps:
       - name: Check out the repository
         uses: actions/checkout@v4
 
       - name: Configure
-        run: cmake --preset asan
+        run: cmake --preset asan -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
 
       - name: Build
         run: cmake --build --preset asan --parallel
@@ -71,10 +76,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Debug
 
       - name: Run clang-tidy
-        run: >
-          clang-tidy-18 -p build
-          src/core/core.cpp
-          tests/core_test.cpp
+        run: run-clang-tidy-18 -p build
 
   format:
     name: clang-format
@@ -89,6 +91,5 @@ jobs:
 
       - name: Check formatting
         run: >
-          clang-format-18 --dry-run --Werror
-          src/core/core.cpp
-          tests/core_test.cpp
+          git ls-files -- '*.cpp' '*.hpp' '*.h' '*.cc' '*.hh' '*.cxx' '*.hxx'
+          | xargs --no-run-if-empty clang-format-18 --dry-run --Werror
