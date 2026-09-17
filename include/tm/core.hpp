@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TM_CORE_HPP
+#define TM_CORE_HPP
 
 namespace tm_core {
 
@@ -8,3 +9,5 @@ class Core {
 };
 
 } // namespace tm_core
+
+#endif // TM_CORE_HPP

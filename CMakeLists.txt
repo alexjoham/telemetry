@@ -23,11 +23,11 @@ target_link_libraries(tm_core PRIVATE tm_warnings)
 file(GLOB_RECURSE TM_HEADERS CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp
 )
-# Both suppressions fire by construction when a header is compiled with nothing
-# consuming it. Set per source so they land after tm_warnings' -Wall.
+# Unused by construction: nothing consumes a header's constants in its own TU.
+# Set per source so it lands after tm_warnings' -Wall.
 set_source_files_properties(${TM_HEADERS} PROPERTIES
     LANGUAGE CXX
-    COMPILE_OPTIONS "-Wno-pragma-once-outside-header;-Wno-unused-const-variable"
+    COMPILE_OPTIONS "$<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unused-const-variable>"
 )
 add_library(tm_header_tus OBJECT ${TM_HEADERS})
 target_include_directories(tm_header_tus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
