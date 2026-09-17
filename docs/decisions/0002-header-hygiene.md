@@ -1,0 +1,5 @@
+# Header hygiene
+
+Headers use include guards, not `#pragma once`. The guard macro is the header's path below `include/`, uppercased, separators replaced by `_`, so `include/tm/core.hpp` becomes `TM_CORE_HPP`. `tm_header_tus` compiles every header as its own TU to put it on the `misc-include-cleaner` path, and GCC's `#pragma once in main file` warning is fatal under `-Werror` with no way to suppress it. The naming scheme is unenforced; `llvm-header-guard` is the candidate once its derived name is confirmed to match.
+
+Clang gets `-Wno-unused-const-variable`, scoped to those header TUs only. A constant in a header compiled alone is unused by construction, so every instance there is a false positive. Nothing is lost: Clang only fires this for the main file, so dead constants in included headers never warned, and main-file constants stay covered. Declaring header constants `inline constexpr` silences it without the suppression and is the C++17 idiom; `kMaxFrameSize` is the only one affected, and once it moves the flag can be deleted.
