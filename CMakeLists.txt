@@ -18,6 +18,23 @@ target_compile_features(tm_core PUBLIC cxx_std_20)
 target_link_libraries(tm_core PRIVATE tm_warnings)
 
 
+# Headers as their own TUs, linked by nothing: misc-include-cleaner only inspects a TU's main file.
+# CONFIGURE_DEPENDS, or a header added after the last configure is silently exempt.
+file(GLOB_RECURSE TM_HEADERS CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp
+)
+# Both suppressions fire by construction when a header is compiled with nothing
+# consuming it. Set per source so they land after tm_warnings' -Wall.
+set_source_files_properties(${TM_HEADERS} PROPERTIES
+    LANGUAGE CXX
+    COMPILE_OPTIONS "-Wno-pragma-once-outside-header;-Wno-unused-const-variable"
+)
+add_library(tm_header_tus OBJECT ${TM_HEADERS})
+target_include_directories(tm_header_tus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_features(tm_header_tus PRIVATE cxx_std_20)
+target_link_libraries(tm_header_tus PRIVATE tm_warnings)
+
+
 include(FetchContent)
 FetchContent_Declare(
     googletest
