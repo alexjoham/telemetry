@@ -4,4 +4,4 @@ Checks: >
   misc-const-correctness,
   readability-make-member-function-const
 WarningsAsErrors: '*'
-HeaderFilterRegex: '(^|/)(src|tests)/'
+HeaderFilterRegex: '(^|/)(src|tests|include)/'
