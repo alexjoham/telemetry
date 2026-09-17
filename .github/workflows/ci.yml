@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.cxx }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cxx: [g++, clang++]
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Report toolchain versions
+        run: |
+          ${{ matrix.cxx }} --version
+          cmake --version
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+          -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  asan:
+    name: ASan + UBSan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake --preset asan
+
+      - name: Build
+        run: cmake --build --preset asan --parallel
+
+      - name: Test
+        run: ctest --preset asan
+
+  lint:
+    name: clang-tidy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Report toolchain version
+        run: clang-tidy-18 --version
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Run clang-tidy
+        run: >
+          clang-tidy-18 -p build
+          src/core/core.cpp
+          tests/core_test.cpp
+
+  format:
+    name: clang-format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Report toolchain version
+        run: clang-format-18 --version
+
+      - name: Check formatting
+        run: >
+          clang-format-18 --dry-run --Werror
+          src/core/core.cpp
+          tests/core_test.cpp
