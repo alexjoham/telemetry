@@ -15,6 +15,7 @@ Reading from a file or socket belongs in a later `tm_io` target or similar. `tm_
 - `Error` is a struct containing an error code and a `uint8_t detail` field. The detail is unused for a bad checksum, but the simple fixed-size representation keeps decoder control flow and call sites straightforward.
 - The framer and decoder share one locally implemented `Result<T, E>` template with distinct payload and error types.
 - Unknown message IDs do not carry the raw payload, which keeps the decoder allocation-free.
+- A known message id with the wrong payload length is its own outcome, not folded into unknown id. The caller's action differs: an unknown id is skipped in confidence, a length mismatch is counted as a defect.
 
 ## Framer
 | Outcome               | Carries                   | What the caller does                                 |
@@ -37,8 +38,11 @@ The decoder returns a `Result<T, Error>` that returns either a decoded frame or 
 | Bad checksum        | nothing          | discard, and distrust the framing of this frame |
 | Unsupported version | the version byte | discard this frame, log once, continue          |
 | Unknown message id  | the id           | skip this frame, continue with full confidence  |
+| Wrong payload length | the message id  | count it, skip this frame, continue             |
 
 Note to the bad checksum and unknown message id cases: A bad checksum makes the length field untrustworthy, and the framer used that length to find the frame end, so the boundary itself is suspect. An unknown id sits inside a frame whose integrity is proven, so the boundary holds.
+
+Wrong payload length means a known message id carrying a payload that is not the size that id defines. The boundary holds for the same reason as the unknown id case, and the length field was itself covered by the CRC, so the caller continues normally. It is a separate outcome from unknown id because the two mean opposite things: an unknown id is forward compatibility working as intended, while a length mismatch means sender and receiver disagree about a message both claim to understand. That is a defect somewhere, so a receiver counts it rather than skipping it silently. The error carries the message id, because the useful action is attributing the defect to a message type; the length itself is in the frame the caller already holds. The expected length per id is in [format.md](../format.md#message-ids).
 
 ## Rejected alternatives
 

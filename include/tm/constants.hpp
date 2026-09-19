@@ -5,7 +5,9 @@
 
 namespace tm_core {
 
-constexpr std::size_t kMaxFrameSize = 256;
+// Derived from the layout in docs/format.md: 12-byte header + 255 max payload
+// (1-byte length field) + 2-byte CRC. Not an independent limit.
+constexpr std::size_t kMaxFrameSize = 269;
 
 } // namespace tm_core
 
