@@ -1,11 +1,14 @@
 #ifndef TM_CORE_HPP
 #define TM_CORE_HPP
 
+#include <cstdint>
+#include <span>
+
 namespace tm_core {
 
 class Core {
   public:
-    int returnZero();
+    std::uint16_t crc16(std::span<const std::byte> data);
 };
 
 } // namespace tm_core

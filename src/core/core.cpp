@@ -2,7 +2,7 @@
 
 namespace tm_core {
 
-int Core::returnZero() {
+std::uint16_t Core::crc16(std::span<const std::byte> /*data*/) {
     return 0;
 }
 
