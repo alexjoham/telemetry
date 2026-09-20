@@ -33,6 +33,8 @@ The framer only inspects the front of the buffer, so a found frame always starts
 
 When no frame is at the front, the framer scans to the next sync word and reports the whole garbage prefix in one result. The sync word can occur by chance inside a payload, causing a false start; the CRC catches that, and the cost of resynchronising again is one wasted frame.
 
+A trailing `0xA5` is a sync word the framer cannot rule out yet, so it is never part of the prefix, and a discard count is therefore never zero. See [Resynchronisation](../format.md#resynchronisation) for the rule and for why a zero count would spin the caller's loop.
+
 `Incomplete` stays empty: a byte count is unavailable when the header itself is truncated, and unactionable in any case.
 
 ## Decoder

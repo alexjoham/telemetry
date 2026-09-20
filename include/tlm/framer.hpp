@@ -16,7 +16,7 @@ struct Discard {
 };
 using FrameResult = std::variant<Found, Incomplete, Discard>;
 
-FrameResult frame(std::span<const std::byte> /*data*/) {
+[[nodiscard]] constexpr FrameResult frame(std::span<const std::byte> /*data*/) noexcept {
     return Incomplete{};
 }
 

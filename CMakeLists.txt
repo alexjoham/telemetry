@@ -50,6 +50,7 @@ enable_testing()
 include(GoogleTest)
 add_executable(tm_tests
     tests/crc_test.cpp
+    tests/framer_test.cpp
 )
 target_link_libraries(tm_tests PRIVATE tm_core tm_warnings GTest::gtest_main)
 gtest_discover_tests(tm_tests)

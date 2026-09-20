@@ -54,6 +54,16 @@ The framer reads exactly two fields: the sync word and the payload length. Frame
 
 The framer only looks at the front of the buffer, so a frame it finds always starts at offset zero and the result carries a length alone. When the front is not a sync word it scans for the next one and reports that prefix as bytes to discard, in its own result; the frame behind it is reported by the following call. See [0001](decisions/0001-error-strategy.md) for why skipping and finding are never the same call.
 
+### Resynchronisation
+
+When the front is not a sync word, the framer scans for the smallest offset at which a sync word *could* begin and discards everything before it. An offset `i` is such a candidate when either both bytes are present and read `A5 C3`, or `i` is the last byte of the buffer and holds `A5`, because its second byte may still be in flight. With a two-byte sync word only the final byte can be a partial one.
+
+The trailing `A5` is not a detail. On a buffer of `00 00 A5` the framer discards 2, not 3. Discarding all three eats the first byte of a frame that was about to arrive, and that frame can then never be recognised: the `C3` shows up at the front of the next call with nothing in front of it to match.
+
+**The discard count is never zero.** If the candidate offset is zero, the buffer starts with either a complete sync word or a lone `A5`, and neither is a discard: the first is handled by the length logic, the second is `Incomplete`. This is what stops the caller spinning. Every discard is at least one byte, so the buffer strictly shrinks on each drop-and-call-again, and the one case with nothing to drop returns the outcome that means wait for more data rather than call again immediately.
+
+`Incomplete` on a buffer that is entirely a partial sync word is a correct answer even if no further byte ever arrives. The caller waits on its input; it does not loop.
+
 The framing contract is three items, and none may change between versions without breaking every deployed receiver:
 
 1. the sync word,
