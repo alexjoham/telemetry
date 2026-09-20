@@ -1,5 +1,5 @@
-#ifndef TM_CONSTANTS_HPP
-#define TM_CONSTANTS_HPP
+#ifndef TLM_CONSTANTS_HPP
+#define TLM_CONSTANTS_HPP
 
 #include <cstddef>
 
@@ -11,4 +11,4 @@ constexpr std::size_t kMaxFrameSize = 269;
 
 } // namespace tlm
 
-#endif // TM_CONSTANTS_HPP
+#endif // TLM_CONSTANTS_HPP

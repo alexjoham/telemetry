@@ -1,5 +1,5 @@
-#ifndef TLM_HPP
-#define TLM_HPP
+#ifndef TLM_CRC_HPP
+#define TLM_CRC_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -11,4 +11,4 @@ std::uint16_t crc16(std::span<const std::byte> data);
 
 } // namespace tlm
 
-#endif // TLM_HPP
+#endif // TLM_CRC_HPP

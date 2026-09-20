@@ -20,7 +20,7 @@ Fixed header: 12 bytes. CRC: 2 bytes. Total frame length `L = 12 + n + 2`, where
 | 12     | n     | Payload         | message-specific, see VehicleState below             |
 | 12+n   | 2     | CRC-16          | little-endian, coverage below                        |
 
-The length field is one byte, so `n` reaches 255 and the largest frame is `12 + 255 + 2 = 269` bytes. `kMaxFrameSize` in `include/tm/constants.hpp` is the value to be used anywhere in the code.
+The length field is one byte, so `n` reaches 255 and the largest frame is `12 + 255 + 2 = 269` bytes. `kMaxFrameSize` in `include/tlm/constants.hpp` is the value to be used anywhere in the code.
 
 ### Message ids
 
