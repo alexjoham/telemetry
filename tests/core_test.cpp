@@ -1,6 +1,7 @@
 #include "tm/crc.hpp"
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <gtest/gtest.h>
 #include <span>
 #include <string_view>

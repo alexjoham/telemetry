@@ -7,7 +7,7 @@
 
 namespace tlm {
 
-    std::uint16_t crc16(std::span<const std::byte> data);
+std::uint16_t crc16(std::span<const std::byte> data);
 
 } // namespace tlm
 
