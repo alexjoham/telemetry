@@ -60,6 +60,23 @@ TEST(FramerTest, GarbageBeforeFrameDiscardsFirstAndFindsSecond) {
     EXPECT_EQ(std::get<tlm::Found>(second).length, kWorkedExampleLength);
 }
 
+// A 0xA5 not followed by 0xC3 is garbage, not a candidate: only the buffer's last byte gets the
+// benefit of the doubt. An implementation scanning for 0xA5 alone stops at offset 0 and passes
+// every other test here.
+TEST(FramerTest, UnpairedSyncByteIsNotACandidate) {
+    constexpr std::size_t kPrefix = 2;
+    std::array<std::byte, kPrefix + kWorkedExampleLength> buffer{std::byte{0xA5}, std::byte{0x00}};
+    std::copy(kWorkedExample.begin(), kWorkedExample.end(), buffer.begin() + kPrefix);
+
+    const tlm::FrameResult first = tlm::frame(buffer);
+    ASSERT_TRUE(std::holds_alternative<tlm::Discard>(first));
+    EXPECT_EQ(std::get<tlm::Discard>(first).count, kPrefix);
+
+    const tlm::FrameResult second = tlm::frame(std::span<const std::byte>{buffer}.subspan(kPrefix));
+    ASSERT_TRUE(std::holds_alternative<tlm::Found>(second));
+    EXPECT_EQ(std::get<tlm::Found>(second).length, kWorkedExampleLength);
+}
+
 // The trailing 0xA5 may be the first byte of a sync word whose 0xC3 has not arrived.
 // Discarding it would make the frame behind it unrecognisable forever.
 TEST(FramerTest, TrailingSyncByteIsNotDiscarded) {
