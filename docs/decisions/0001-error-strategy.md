@@ -5,7 +5,7 @@ This document is to decide first on how we handle possible errors in the pipelin
 
 `tm_core` is the library target in the CMake layout. It contains the framer, decoder, CRC, and typed message structs. This is pure computation: no files, sockets, `<iostream>`, or OS headers. It must be unit-testable with hand-built byte arrays.
 
-It is an `INTERFACE` target today, because `crc16` is `constexpr` and the only symbol so far, so its definition sits in the header and no TU is left to compile. It becomes a compiled library again at the first symbol that cannot be `constexpr`, which the framer's buffer handling probably is. The purity described above is what makes the header-only shape available at all, so the two are not in tension, but the target type is an artefact of how little exists yet and should not be read as a decision to stay header-only.
+It is an `INTERFACE` target today, because `crc16` is `constexpr` and the only symbol so far, so its definition sits in the header and no TU is left to compile. It becomes a compiled library again at the first symbol that cannot be `constexpr`, which the framer's buffer handling probably is. The purity described above is what makes the header-only shape available at all, so the two are not in tension, but the target type is an artefact of how little exists yet and should not be read as a decision to stay header-only. Superseded by [0004](0004-header-only.md): the framer turned out to be `constexpr`, and header-only is now the decision.
 
 While `tm_core` has no sources it does not link `tm_warnings`: there is nothing to warn about, and the headers are compiled under the full warning set by `tm_header_tus` (see [0002](0002-header-hygiene.md)). That link must come back with the sources.
 
