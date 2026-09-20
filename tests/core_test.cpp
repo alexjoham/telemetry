@@ -14,7 +14,8 @@ TEST(CoreTest, CorrectCrcCalculationForKnownHeader) {
 
 TEST(CoreTest, CorrectCrcCalculationForWorkedExample) {
     tm_core::Core core;
-    // The worked example frame from docs/format.md without its trailing CRC field: coverage is bytes 0..12+n-1, so 16 of the 18 frame bytes.
+    // The worked example frame from docs/format.md without its trailing CRC field: coverage is
+    // bytes 0..12+n-1, so 16 of the 18 frame bytes.
     constexpr std::array<std::byte, 16> kFrame{
         std::byte{0xA5}, std::byte{0xC3}, std::byte{0x01}, std::byte{0x01},
         std::byte{0x41}, std::byte{0x9C}, std::byte{0x4D}, std::byte{0x3C},
