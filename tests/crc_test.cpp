@@ -6,13 +6,15 @@
 #include <span>
 #include <string_view>
 
-TEST(CoreTest, CorrectCrcCalculationForKnownHeader) {
+TEST(CrcTest, CheckValueMatchesCatalogue) {
+    // The catalogue check value for CRC-16/IBM-3740 (CCITT-FALSE): poly 0x1021, init 0xFFFF,
+    // no reflection, no final xor. Pins the variant, not just the implementation.
     constexpr std::string_view kCheck{"123456789"};
     const auto data = std::as_bytes(std::span{kCheck});
     EXPECT_EQ(tlm::crc16(data), std::uint16_t{0x29B1});
 }
 
-TEST(CoreTest, CorrectCrcCalculationForWorkedExample) {
+TEST(CrcTest, WorkedExampleFrameMatchesSpec) {
     // The worked example frame from docs/format.md without its trailing CRC field: coverage is
     // bytes 0..12+n-1, so 16 of the 18 frame bytes.
     constexpr std::array<std::byte, 16> kFrame{

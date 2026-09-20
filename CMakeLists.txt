@@ -52,7 +52,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 enable_testing()
 include(GoogleTest)
 add_executable(tm_tests
-    tests/core_test.cpp
+    tests/crc_test.cpp
 )
 target_link_libraries(tm_tests PRIVATE tm_core tm_warnings GTest::gtest_main)
 gtest_discover_tests(tm_tests)
