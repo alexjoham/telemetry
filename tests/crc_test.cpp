@@ -6,9 +6,9 @@
 
 // The catalogue check value for CRC-16/IBM-3740 (CCITT-FALSE): poly 0x1021, init 0xFFFF,
 // no reflection, no final xor. Pins the variant, not just the implementation.
-constexpr std::array<std::byte, 9> kCheckInput{
-    std::byte{'1'}, std::byte{'2'}, std::byte{'3'}, std::byte{'4'}, std::byte{'5'},
-    std::byte{'6'}, std::byte{'7'}, std::byte{'8'}, std::byte{'9'}};
+constexpr std::array<std::byte, 9> kCheckInput{std::byte{'1'}, std::byte{'2'}, std::byte{'3'},
+                                               std::byte{'4'}, std::byte{'5'}, std::byte{'6'},
+                                               std::byte{'7'}, std::byte{'8'}, std::byte{'9'}};
 static_assert(tlm::crc16(kCheckInput) == 0x29B1);
 
 // The worked example frame from docs/format.md without its trailing CRC field: coverage is
