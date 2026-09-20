@@ -1,11 +1,11 @@
-#include "tm/core.hpp"
+#include "tm/crc.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <span>
 
-namespace tm_core {
+namespace tlm {
 
-std::uint16_t Core::crc16(std::span<const std::byte> data) {
+std::uint16_t crc16(std::span<const std::byte> data) {
     std::uint16_t output = 0xFFFF;
     constexpr std::uint16_t pol = 0x1021;
     for (const std::byte b : data) {
@@ -21,4 +21,4 @@ std::uint16_t Core::crc16(std::span<const std::byte> data) {
     return output;
 }
 
-} // namespace tm_core
+} // namespace tlm

@@ -11,7 +11,7 @@ target_compile_options(tm_warnings INTERFACE
 )
 
 add_library(tm_core
-    src/core/core.cpp
+    src/core/crc.cpp
 )
 target_include_directories(tm_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(tm_core PUBLIC cxx_std_20)
