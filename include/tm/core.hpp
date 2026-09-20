@@ -1,6 +1,7 @@
 #ifndef TM_CORE_HPP
 #define TM_CORE_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 

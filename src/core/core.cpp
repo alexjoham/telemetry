@@ -1,4 +1,7 @@
 #include "tm/core.hpp"
+#include <cstddef>
+#include <cstdint>
+#include <span>
 
 namespace tm_core {
 
