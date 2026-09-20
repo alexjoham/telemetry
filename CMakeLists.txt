@@ -10,12 +10,9 @@ target_compile_options(tm_warnings INTERFACE
     $<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wshadow-all>
 )
 
-add_library(tm_core
-    src/core/crc.cpp
-)
-target_include_directories(tm_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_compile_features(tm_core PUBLIC cxx_std_20)
-target_link_libraries(tm_core PRIVATE tm_warnings)
+add_library(tm_core INTERFACE)
+target_include_directories(tm_core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_features(tm_core INTERFACE cxx_std_20)
 
 
 # Headers as their own TUs, linked by nothing: misc-include-cleaner only inspects a TU's main file.

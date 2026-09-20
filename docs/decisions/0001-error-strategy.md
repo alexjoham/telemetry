@@ -5,11 +5,15 @@ This document is to decide first on how we handle possible errors in the pipelin
 
 `tm_core` is the library target in the CMake layout. It contains the framer, decoder, CRC, and typed message structs. This is pure computation: no files, sockets, `<iostream>`, or OS headers. It must be unit-testable with hand-built byte arrays.
 
+It is an `INTERFACE` target today, because `crc16` is `constexpr` and the only symbol so far, so its definition sits in the header and no TU is left to compile. It becomes a compiled library again at the first symbol that cannot be `constexpr`, which the framer's buffer handling probably is. The purity described above is what makes the header-only shape available at all, so the two are not in tension, but the target type is an artefact of how little exists yet and should not be read as a decision to stay header-only.
+
+While `tm_core` has no sources it does not link `tm_warnings`: there is nothing to warn about, and the headers are compiled under the full warning set by `tm_header_tus` (see [0002](0002-header-hygiene.md)). That link must come back with the sources.
+
 Reading from a file or socket belongs in a later `tm_io` target or similar. `tm_tests` links `tm_core`.
 
 ## Decisions
 
-- `tm_core` does not throw exceptions. A corrupt frame is normal on a radio link, not exceptional, and control flow expected thousands of times must not go through exception machinery.
+- `tm_core` does not throw exceptions. A corrupt frame is normal on a radio link, not exceptional, and control flow expected thousands of times must not go through exception machinery. Where the claim is true of a given function it is written as `noexcept` rather than left to this document, so a later change that breaks it fails to compile instead of silently contradicting the decision. `crc16` is marked; the framer and decoder are expected to be.
 - Decoding does not allocate. It writes into a fixed-size struct owned by the caller, and every failure payload is a few bytes.
 - The framer returns a small custom result type with the three outcomes below and outcome-specific payloads.
 - `Error` is a struct containing an error code and a `uint8_t detail` field. The detail is unused for a bad checksum, but the simple fixed-size representation keeps decoder control flow and call sites straightforward.
