@@ -2,12 +2,21 @@
 #define TLM_CONSTANTS_HPP
 
 #include <cstddef>
+#include <cstdint>
+#include <limits>
 
 namespace tlm {
 
-// Derived from the layout in docs/format.md: 12-byte header + 255 max payload
-// (1-byte length field) + 2-byte CRC. Not an independent limit.
-constexpr std::size_t kMaxFrameSize = 269;
+constexpr std::byte kSyncByte0{0xA5};
+constexpr std::byte kSyncByte1{0xC3};
+
+constexpr std::size_t kLengthFieldOffset = 10;
+
+constexpr std::size_t kFixedHeaderSize = 12;
+constexpr std::size_t kCrcSize = 2;
+
+constexpr std::size_t kMaxPayloadSize = std::numeric_limits<std::uint8_t>::max();
+constexpr std::size_t kMaxFrameSize = kFixedHeaderSize + kMaxPayloadSize + kCrcSize;
 
 } // namespace tlm
 
