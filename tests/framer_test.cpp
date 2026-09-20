@@ -10,6 +10,11 @@
 // kWorkedExampleLength is the only expected length in this file that comes from the spec
 // rather than from the rules.
 
+// frame() is constexpr, so an out-of-bounds read inside it is ill-formed here rather than a
+// sanitizer finding at runtime: the empty buffer proves the size guard, not just the result.
+static_assert(std::get<tlm::Found>(tlm::frame(kWorkedExample)).length == kWorkedExampleLength);
+static_assert(std::holds_alternative<tlm::Incomplete>(tlm::frame({})));
+
 TEST(FramerTest, WorkedExampleAloneIsFound) {
     const tlm::FrameResult result = tlm::frame(kWorkedExample);
     ASSERT_TRUE(std::holds_alternative<tlm::Found>(result));
