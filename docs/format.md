@@ -50,7 +50,9 @@ Subtracting two readings still gives the right answer across a restart, because 
 
 ## Framing
 
-The framer reads exactly two fields: the sync word and the payload length. Frame length is computed rather than read, as `L = fixed_header_size + n + crc_size`, where the length field supplies only `n`. Those two constants live in one place shared by framer and decoder, because the day the header grows a field both must change together or the framer hands the decoder a span off by the difference. The offset is produced rather than read: the framer scans for the sync word, and where it lands is the offset it reports.
+The framer reads exactly two fields: the sync word and the payload length. Frame length is computed rather than read, as `L = fixed_header_size + n + crc_size`, where the length field supplies only `n`. Those two constants live in one place shared by framer and decoder, because the day the header grows a field both must change together or the framer hands the decoder a span off by the difference.
+
+The framer only looks at the front of the buffer, so a frame it finds always starts at offset zero and the result carries a length alone. When the front is not a sync word it scans for the next one and reports that prefix as bytes to discard, in its own result; the frame behind it is reported by the following call. See [0001](decisions/0001-error-strategy.md) for why skipping and finding are never the same call.
 
 The framing contract is three items, and none may change between versions without breaking every deployed receiver:
 

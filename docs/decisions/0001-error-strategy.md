@@ -15,20 +15,25 @@ Reading from a file or socket belongs in a later `tm_io` target or similar. `tm_
 
 - `tm_core` does not throw exceptions. A corrupt frame is normal on a radio link, not exceptional, and control flow expected thousands of times must not go through exception machinery. Where the claim is true of a given function it is written as `noexcept` rather than left to this document, so a later change that breaks it fails to compile instead of silently contradicting the decision. `crc16` is marked; the framer and decoder are expected to be.
 - Decoding does not allocate. It writes into a fixed-size struct owned by the caller, and every failure payload is a few bytes.
-- The framer returns a small custom result type with the three outcomes below and outcome-specific payloads.
+- The framer returns `std::variant<Found, Incomplete, Discard>`, with `Found{length}`, `Incomplete{}` empty, and `Discard{count}`. Each alternative carries exactly the payload its outcome has.
+- The framer only inspects the front of the buffer. It never reports a found frame at a nonzero offset.
 - `Error` is a struct containing an error code and a `uint8_t detail` field. The detail is unused for a bad checksum, but the simple fixed-size representation keeps decoder control flow and call sites straightforward.
-- The framer and decoder share one locally implemented `Result<T, E>` template with distinct payload and error types.
+- The decoder uses a locally implemented `Result<T, E>` template with distinct payload and error types. The framer does not: it has three outcomes, not two.
 - Unknown message IDs do not carry the raw payload, which keeps the decoder allocation-free.
 - A known message id with the wrong payload length is its own outcome, not folded into unknown id. The caller's action differs: an unknown id is skipped in confidence, a length mismatch is counted as a defect.
 
 ## Framer
-| Outcome               | Carries                   | What the caller does                                 |
-| ----------------------|---------------------------|------------------------------------------------------|
-| Found a frame         | offset and length         | hand that span to the decoder, then drop those bytes |
-| Incomplete            | nothing                   | wait for more data, call again                       |
-| No frame at the front | how many bytes to discard | drop those bytes, call again immediately             |
+| Outcome               | Carries                   | What the caller does                            |
+| ----------------------|---------------------------|--------------------------------------------------|
+| Found a frame         | length                    | decode the first `length` bytes, then drop `length` |
+| Incomplete            | nothing                   | wait for more data, call again                  |
+| No frame at the front | how many bytes to discard | drop those bytes, call again immediately        |
+
+The framer only inspects the front of the buffer, so a found frame always starts at offset zero and the outcome carries a length alone. Garbage in front of a frame comes back as its own discard outcome, and only the following call reports found. Every call therefore drops exactly the one number it was given.
 
 When no frame is at the front, the framer scans to the next sync word and reports the whole garbage prefix in one result. The sync word can occur by chance inside a payload, causing a false start; the CRC catches that, and the cost of resynchronising again is one wasted frame.
+
+`Incomplete` stays empty: a byte count is unavailable when the header itself is truncated, and unactionable in any case.
 
 ## Decoder
 
@@ -53,3 +58,8 @@ Wrong payload length means a known message id carrying a payload that is not the
 - `std::optional<Frame>` was rejected because it cannot carry a reason, and the caller's action differs by reason.
 - Exceptions were rejected because corrupt frames are expected radio-link input and should not use exception machinery.
 - Discarding one byte at a time during resynchronisation was rejected because scanning to the next sync word discards a whole garbage run in one call; false sync inside a payload is caught by the CRC at the cost of one wasted frame.
+- **A framer that skips garbage and reports found at an offset**, so that a run of noise followed by a frame yields one result of `found at offset 5`. Three reasons. It forces the caller to compute `offset + length` to know what to drop, so the drop count is derived rather than given. A single call can both skip and find, so a bug in the skip path is only observable through the find path, which makes the function harder to test. And discarded bytes become invisible: the caller learns of them only by noticing a nonzero offset, whereas a separate discard outcome can be counted, and on a radio link that count is a link quality metric.
+- **A struct of `{Kind kind; std::size_t value;}`** for the framer result. It permits a caller to read a payload that does not exist. The concrete failure: a caller hoists `buffer.drop_front(r.value)` out of the branch because two of the three outcomes drop `value`, which compiles and is correct for found and discard. On incomplete it drops whatever the framer left in the field. The symptom is silent frame loss that appears only when frames span read boundaries, so it is invisible on file input and on a quiet link, and shows up as a few percent of frames lost under load with no error reported anywhere. The variant makes that line fail to compile.
+- **A class with private fields and asserting accessors**, for the same result. It converts the bug above into a debug-build abort rather than a compile error, which requires the path to execute and assertions to be on.
+
+The rule that reconciles the variant with the decoder's `Error{code, detail}`, where `detail` is meaningless for a bad checksum: a sometimes-meaningless field is acceptable when misreading it produces a wrong message, and unacceptable when misreading it produces wrong control flow. `detail` feeds a log line. `value` would feed arithmetic on the buffer.
