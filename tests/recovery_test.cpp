@@ -13,9 +13,9 @@
 
 namespace {
 
-// kResyncShift is 0001's rule. kFrameLength is the alternative it rejected: a test runs both
-// on one stream and compares the counts. kNothing drops zero, to trip drain()'s progress guard.
-enum class RejectionPolicy { kResyncShift, kFrameLength, kNothing };
+// kResyncShift is 0001's rule. kFrameLength and kSingleByte are the alternatives it rejected: a
+// test runs two of them on one stream and compares. kNothing drops zero, to trip the progress guard.
+enum class RejectionPolicy { kResyncShift, kFrameLength, kSingleByte, kNothing };
 
 [[nodiscard]] std::size_t dropOnRejection(RejectionPolicy policy, std::size_t length) {
     switch (policy) {
@@ -23,11 +23,20 @@ enum class RejectionPolicy { kResyncShift, kFrameLength, kNothing };
         return tlm::kResyncShift;
     case RejectionPolicy::kFrameLength:
         return length;
+    case RejectionPolicy::kSingleByte:
+        return 1;
     case RejectionPolicy::kNothing:
         return 0;
     }
     return 0;
 }
+
+// A one-byte drop recovers exactly what the rule recovers, so recovered cannot tell them apart.
+// calls is what can: it counts frame() invocations, the work 0001 rejects the one-byte drop for.
+struct DrainResult {
+    std::size_t recovered;
+    std::size_t calls;
+};
 
 constexpr std::size_t kNoiseSize = 18;
 constexpr std::size_t kFrameCount = 15;
@@ -35,12 +44,13 @@ constexpr std::size_t kStreamSize = kNoiseSize + (kFrameCount * kWorkedExampleLe
 
 // Drives frame(), checks each frame's CRC, and returns how many passed. This is the caller loop
 // from 0001's framer and decoder tables. It stays in the test until tm_io decides who owns it.
-[[nodiscard]] std::size_t drain(std::span<const std::byte> buffer, RejectionPolicy policy) {
+[[nodiscard]] DrainResult drain(std::span<const std::byte> buffer, RejectionPolicy policy) {
     // Every iteration drops at least one byte, so the loop cannot legally run more times than the
     // buffer has bytes. Exceeding that means it is stuck, and failing beats spinning.
     const std::size_t max_iterations = buffer.size();
     std::size_t iterations = 0;
     std::size_t recovered = 0;
+    std::size_t calls = 0;
 
     while (!buffer.empty()) {
         if (iterations++ == max_iterations) {
@@ -50,6 +60,7 @@ constexpr std::size_t kStreamSize = kNoiseSize + (kFrameCount * kWorkedExampleLe
 
         const std::size_t size_before = buffer.size();
         const tlm::FrameResult result = tlm::frame(buffer);
+        calls++;
 
         if (const auto *const found = std::get_if<tlm::Found>(&result)) {
             const std::span<const std::byte> candidate = buffer.first(found->length);
@@ -80,7 +91,7 @@ constexpr std::size_t kStreamSize = kNoiseSize + (kFrameCount * kWorkedExampleLe
             break;
         }
     }
-    return recovered;
+    return DrainResult{recovered, calls};
 }
 
 // The noise claims length 200, so the framer computes L = 214 and only the CRC rejects it. Its
@@ -131,10 +142,10 @@ static_assert(kAdjacentStreamSize >= kBogusFrameLength);
 TEST(RecoveryTest, ResyncShiftRecoversEveryFrameBehindAFalseStart) {
     const std::array<std::byte, kStreamSize> stream = makeStream();
 
-    EXPECT_EQ(drain(stream, RejectionPolicy::kResyncShift), kFrameCount);
+    EXPECT_EQ(drain(stream, RejectionPolicy::kResyncShift).recovered, kFrameCount);
 
     // 12 + 200 + 2 = 214 dropped, 288 - 214 = 74 left, 74 / 18 = 4 frames with 2 bytes over.
-    EXPECT_EQ(drain(stream, RejectionPolicy::kFrameLength), std::size_t{4});
+    EXPECT_EQ(drain(stream, RejectionPolicy::kFrameLength).recovered, std::size_t{4});
 }
 
 // The shift must not overshoot: a frame starting kResyncShift bytes in must still be found. In
@@ -142,8 +153,8 @@ TEST(RecoveryTest, ResyncShiftRecoversEveryFrameBehindAFalseStart) {
 TEST(RecoveryTest, ShiftDoesNotSkipAnAdjacentSyncWord) {
     const std::array<std::byte, kAdjacentStreamSize> stream = makeAdjacentStream();
 
-    EXPECT_EQ(drain(stream, RejectionPolicy::kResyncShift), std::size_t{1});
-    EXPECT_EQ(drain(stream, RejectionPolicy::kFrameLength), std::size_t{0});
+    EXPECT_EQ(drain(stream, RejectionPolicy::kResyncShift).recovered, std::size_t{1});
+    EXPECT_EQ(drain(stream, RejectionPolicy::kFrameLength).recovered, std::size_t{0});
 }
 
 // The shift must not undershoot either, which no recovered count can see: dropping one still
@@ -159,6 +170,19 @@ TEST(RecoveryTest, ShiftLandsOnTheAdjacentSyncWord) {
     const auto *const found = std::get_if<tlm::Found>(&result);
     ASSERT_NE(found, nullptr);
     EXPECT_EQ(found->length, kWorkedExampleLength);
+}
+
+// 0001 rejects the one-byte drop on cost, not correctness: it recovers the same frames and spends
+// a call and a scan per rejection learning what the sync word already said. Here 3 calls against 4.
+TEST(RecoveryTest, ShiftCostsFewerFramerCallsThanASingleByteDrop) {
+    const std::array<std::byte, kAdjacentStreamSize> stream = makeAdjacentStream();
+
+    const DrainResult rule = drain(stream, RejectionPolicy::kResyncShift);
+    const DrainResult single_byte = drain(stream, RejectionPolicy::kSingleByte);
+
+    // Equal recovery is the premise: without it the two are not comparable on cost.
+    EXPECT_EQ(rule.recovered, single_byte.recovered);
+    EXPECT_LT(rule.calls, single_byte.calls);
 }
 
 // The other tests never trip the guard, so a broken one would still pass them. kNothing drops
