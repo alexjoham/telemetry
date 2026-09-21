@@ -20,14 +20,7 @@ target_compile_features(tm_core INTERFACE cxx_std_20)
 file(GLOB_RECURSE TM_HEADERS CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp
 )
-# Unused by construction: nothing consumes a header's constants in its own TU.
-# Scoped to headers, and Clang never warned for included ones anyway, so no coverage is lost.
-# Removable once header constants are inline constexpr -- see docs/decisions/0002-header-hygiene.md.
-# Set per source so it lands after tm_warnings' -Wall.
-set_source_files_properties(${TM_HEADERS} PROPERTIES
-    LANGUAGE CXX
-    COMPILE_OPTIONS "$<$<CXX_COMPILER_ID:Clang,AppleClang>:-Wno-unused-const-variable>"
-)
+set_source_files_properties(${TM_HEADERS} PROPERTIES LANGUAGE CXX)
 add_library(tm_header_tus OBJECT ${TM_HEADERS})
 target_include_directories(tm_header_tus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(tm_header_tus PRIVATE cxx_std_20)
