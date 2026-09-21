@@ -1,4 +1,5 @@
 #include "test_frames.hpp"
+#include "tlm/constants.hpp"
 #include "tlm/framer.hpp"
 #include <algorithm>
 #include <array>
@@ -97,4 +98,44 @@ TEST(FramerTest, LoneSyncByteIsIncomplete) {
     constexpr std::array<std::byte, 1> kBuffer{std::byte{0xA5}};
     const tlm::FrameResult result = tlm::frame(kBuffer);
     EXPECT_TRUE(std::holds_alternative<tlm::Incomplete>(result));
+}
+
+// The buffer ends exactly at the offset, so a >= guard reads past it and ASan fires.
+TEST(FramerTest, LastByteBeforeLengthFieldIsIncomplete) {
+    std::array<std::byte, tlm::kLengthFieldOffset> buffer{};
+    std::copy_n(kWorkedExample.begin(), buffer.size(), buffer.begin());
+
+    const tlm::FrameResult result = tlm::frame(buffer);
+    EXPECT_TRUE(std::holds_alternative<tlm::Incomplete>(result));
+}
+
+// The first size where data[kLengthFieldOffset] is in range: the framer reads 4, computes
+// L = 18, has 11.
+TEST(FramerTest, LengthFieldAsLastByteIsIncomplete) {
+    const tlm::FrameResult result =
+        tlm::frame(std::span<const std::byte>{kWorkedExample}.first(tlm::kLengthFieldOffset + 1));
+    EXPECT_TRUE(std::holds_alternative<tlm::Incomplete>(result));
+}
+
+TEST(FramerTest, EmptyPayloadIsFound) {
+    constexpr std::size_t kFrameLength = tlm::kFixedHeaderSize + tlm::kCrcSize;
+    std::array<std::byte, kFrameLength> buffer{};
+    buffer[0] = tlm::kSyncByte0;
+    buffer[1] = tlm::kSyncByte1;
+    buffer[tlm::kLengthFieldOffset] = std::byte{0x00};
+
+    const tlm::FrameResult result = tlm::frame(buffer);
+    ASSERT_TRUE(std::holds_alternative<tlm::Found>(result));
+    EXPECT_EQ(std::get<tlm::Found>(result).length, kFrameLength);
+}
+
+TEST(FramerTest, MaxPayloadIsFound) {
+    std::array<std::byte, tlm::kMaxFrameSize> buffer{};
+    buffer[0] = tlm::kSyncByte0;
+    buffer[1] = tlm::kSyncByte1;
+    buffer[tlm::kLengthFieldOffset] = static_cast<std::byte>(tlm::kMaxPayloadSize);
+
+    const tlm::FrameResult result = tlm::frame(buffer);
+    ASSERT_TRUE(std::holds_alternative<tlm::Found>(result));
+    EXPECT_EQ(std::get<tlm::Found>(result).length, tlm::kMaxFrameSize);
 }
