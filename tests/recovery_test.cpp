@@ -14,7 +14,7 @@
 namespace {
 
 // kResyncShift is 0001's rule. kFrameLength and kSingleByte are the alternatives it rejected: a
-// test runs two of them on one stream and compares. kNothing drops zero, to trip the progress guard.
+// test runs two of them on one stream and compares. kNothing drops zero, to trip the guard.
 enum class RejectionPolicy { kResyncShift, kFrameLength, kSingleByte, kNothing };
 
 [[nodiscard]] std::size_t dropOnRejection(RejectionPolicy policy, std::size_t length) {
