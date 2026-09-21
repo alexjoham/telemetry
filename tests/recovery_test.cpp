@@ -99,12 +99,17 @@ constexpr std::size_t kStreamSize = kNoiseSize + (kFrameCount * kWorkedExampleLe
 }
 
 constexpr std::size_t kPaddingSize = 60;
-constexpr std::size_t kAdjacentStreamSize = tlm::kResyncShift + kWorkedExampleLength + kPaddingSize;
+
+// Where the second sync word sits: A5 C3 has no proper prefix that is also a suffix, so the
+// earliest a match can begin again is two bytes in. Not kResyncShift, which is the value on test.
+constexpr std::size_t kAdjacentOffset = 2;
+
+constexpr std::size_t kAdjacentStreamSize = kAdjacentOffset + kWorkedExampleLength + kPaddingSize;
 
 // The false start has no header, so byte 10 falls inside the real frame: 0x2B, giving L = 57.
 constexpr std::size_t kBogusFrameLength =
     tlm::kFixedHeaderSize +
-    std::to_integer<std::size_t>(kWorkedExample[tlm::kLengthFieldOffset - tlm::kResyncShift]) +
+    std::to_integer<std::size_t>(kWorkedExample[tlm::kLengthFieldOffset - kAdjacentOffset]) +
     tlm::kCrcSize;
 
 // Below L the framer never answers Found, so every policy recovers 0 whatever the shift does.
@@ -115,7 +120,7 @@ static_assert(kAdjacentStreamSize >= kBogusFrameLength);
     stream[0] = tlm::kSyncByte0;
     stream[1] = tlm::kSyncByte1;
     std::copy(kWorkedExample.begin(), kWorkedExample.end(),
-              stream.begin() + static_cast<std::ptrdiff_t>(tlm::kResyncShift));
+              stream.begin() + static_cast<std::ptrdiff_t>(kAdjacentOffset));
     return stream;
 }
 
@@ -139,6 +144,21 @@ TEST(RecoveryTest, ShiftDoesNotSkipAnAdjacentSyncWord) {
 
     EXPECT_EQ(drain(stream, RejectionPolicy::kResyncShift), std::size_t{1});
     EXPECT_EQ(drain(stream, RejectionPolicy::kFrameLength), std::size_t{0});
+}
+
+// The shift must not undershoot either, which no recovered count can see: dropping one still
+// recovers the frame, one wasted call later. So assert the landing, not the total.
+TEST(RecoveryTest, ShiftLandsOnTheAdjacentSyncWord) {
+    const std::array<std::byte, kAdjacentStreamSize> stream = makeAdjacentStream();
+    const std::span<const std::byte> after_drop =
+        std::span<const std::byte>{stream}.subspan(tlm::kResyncShift);
+
+    const tlm::FrameResult result = tlm::frame(after_drop);
+
+    // A Discard here means the drop stopped short and the framer had to scan the rest of the way.
+    const auto *const found = std::get_if<tlm::Found>(&result);
+    ASSERT_NE(found, nullptr);
+    EXPECT_EQ(found->length, kWorkedExampleLength);
 }
 
 // The other tests never trip the guard, so a broken one would still pass them. kNothing drops
