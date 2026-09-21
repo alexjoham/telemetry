@@ -18,6 +18,8 @@ inline constexpr std::size_t kCrcSize = 2;
 inline constexpr std::size_t kMaxPayloadSize = std::numeric_limits<std::uint8_t>::max();
 inline constexpr std::size_t kMaxFrameSize = kFixedHeaderSize + kMaxPayloadSize + kCrcSize;
 
+inline constexpr std::size_t kResyncShift = 2;
+
 } // namespace tlm
 
 #endif // TLM_CONSTANTS_HPP
