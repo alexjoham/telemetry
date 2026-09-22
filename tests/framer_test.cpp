@@ -11,10 +11,19 @@
 // kWorkedExampleLength is the only expected length in this file that comes from the spec
 // rather than from the rules.
 
-// frame() is constexpr, so an out-of-bounds read inside it is ill-formed here rather than a
-// sanitizer finding at runtime: the empty buffer proves the size guard, not just the result.
+// Ends at exactly kLengthFieldOffset bytes, so indexing past it is genuinely out of bounds.
+constexpr std::array<std::byte, tlm::kLengthFieldOffset> MakeWorkedExamplePrefix() {
+    std::array<std::byte, tlm::kLengthFieldOffset> buffer{};
+    std::copy_n(kWorkedExample.begin(), buffer.size(), buffer.begin());
+    return buffer;
+}
+inline constexpr auto kWorkedExamplePrefix = MakeWorkedExamplePrefix();
+
+// A full frame is found, and an empty buffer is incomplete.
 static_assert(std::get<tlm::Found>(tlm::frame(kWorkedExample)).length == kWorkedExampleLength);
 static_assert(std::holds_alternative<tlm::Incomplete>(tlm::frame({})));
+// A buffer ending right before the length field is incomplete.
+static_assert(std::holds_alternative<tlm::Incomplete>(tlm::frame(kWorkedExamplePrefix)));
 
 TEST(FramerTest, WorkedExampleAloneIsFound) {
     const tlm::FrameResult result = tlm::frame(kWorkedExample);
@@ -102,10 +111,7 @@ TEST(FramerTest, LoneSyncByteIsIncomplete) {
 
 // The buffer ends exactly at the offset, so a >= guard reads past it and ASan fires.
 TEST(FramerTest, LastByteBeforeLengthFieldIsIncomplete) {
-    std::array<std::byte, tlm::kLengthFieldOffset> buffer{};
-    std::copy_n(kWorkedExample.begin(), buffer.size(), buffer.begin());
-
-    const tlm::FrameResult result = tlm::frame(buffer);
+    const tlm::FrameResult result = tlm::frame(kWorkedExamplePrefix);
     EXPECT_TRUE(std::holds_alternative<tlm::Incomplete>(result));
 }
 
