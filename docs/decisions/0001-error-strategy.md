@@ -26,13 +26,13 @@ Reading from a file or socket belongs in a later `tm_io` target or similar. `tm_
 ## Framer
 | Outcome               | Carries                   | What the caller does                            |
 | ----------------------|---------------------------|--------------------------------------------------|
-| Found a frame         | length                    | decode the first `length` bytes, then drop `length` |
+| Found a frame         | length                    | decode the first `length` bytes; on success drop `length`, on bad checksum drop `kResyncShift` instead ([see below](#recovery-after-a-rejected-frame)) |
 | Incomplete            | nothing                   | wait for more data, call again                  |
 | No frame at the front | how many bytes to discard | drop those bytes, call again immediately        |
 
 The framer only inspects the front of the buffer, so a found frame always starts at offset zero and the outcome carries a length alone. Garbage in front of a frame comes back as its own discard outcome, and only the following call reports found. Every call therefore drops exactly the one number it was given.
 
-When no frame is at the front, the framer scans to the next sync word and reports the whole garbage prefix in one result. The sync word can occur by chance inside a payload, causing a false start; the CRC catches that, and the cost of resynchronising again is one wasted frame.
+When no frame is at the front, the framer scans to the next sync word and reports the whole garbage prefix in one result. The sync word can occur by chance inside a payload, causing a false start; the CRC catches that, and the cost of resynchronising is dropping `kResyncShift` and calling `frame()` again, not a lost frame; see [Recovery after a rejected frame](#recovery-after-a-rejected-frame).
 
 A trailing `0xA5` is a sync word the framer cannot rule out yet, so it is never part of the prefix, and a discard count is therefore never zero. See [Resynchronisation](../format.md#resynchronisation) for the rule and for why a zero count would spin the caller's loop.
 
@@ -74,7 +74,7 @@ Unlike the framer's variant, nothing here makes the wrong drop fail to compile: 
 
 - `std::optional<Frame>` was rejected because it cannot carry a reason, and the caller's action differs by reason.
 - Exceptions were rejected because corrupt frames are expected radio-link input and should not use exception machinery.
-- Discarding one byte at a time during resynchronisation was rejected because scanning to the next sync word discards a whole garbage run in one call; false sync inside a payload is caught by the CRC at the cost of one wasted frame.
+- Discarding one byte at a time during resynchronisation was rejected because scanning to the next sync word discards a whole garbage run in one call; false sync inside a payload is caught by the CRC, and recovering from it costs a couple of extra `frame()` calls, not a lost frame.
 - **A framer that skips garbage and reports found at an offset**, so that a run of noise followed by a frame yields one result of `found at offset 5`. Three reasons. It forces the caller to compute `offset + length` to know what to drop, so the drop count is derived rather than given. A single call can both skip and find, so a bug in the skip path is only observable through the find path, which makes the function harder to test. And discarded bytes become invisible: the caller learns of them only by noticing a nonzero offset, whereas a separate discard outcome can be counted, and on a radio link that count is a link quality metric.
 - **A struct of `{Kind kind; std::size_t value;}`** for the framer result. It permits a caller to read a payload that does not exist. The concrete failure: a caller hoists `buffer.drop_front(r.value)` out of the branch because two of the three outcomes drop `value`, which compiles and is correct for found and discard. On incomplete it drops whatever the framer left in the field. The symptom is silent frame loss that appears only when frames span read boundaries, so it is invisible on file input and on a quiet link, and shows up as a few percent of frames lost under load with no error reported anywhere. The variant makes that line fail to compile.
 - **A class with private fields and asserting accessors**, for the same result. It converts the bug above into a debug-build abort rather than a compile error, which requires the path to execute and assertions to be on.
