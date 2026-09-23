@@ -12,3 +12,5 @@ Conversion must not live in any target `tm_core` depends on; `tm_units` or the c
 
 - Engineering units from `decode`: lossy, so a recording can never be re-derived under a corrected calibration.
 - Conversion as a member function on the decoded struct: it is `tm_core` code, so the struct's header drags floating point into every translation unit that includes it.
+
+The concrete struct layout that follows this rule is in [0006](0006-decode.md#decoded-types).

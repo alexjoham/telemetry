@@ -14,11 +14,11 @@ Reading from a file or socket belongs in a later `tm_io` target or similar. `tm_
 ## Decisions
 
 - `tm_core` does not throw exceptions. A corrupt frame is normal on a radio link, not exceptional, and control flow expected thousands of times must not go through exception machinery. Where the claim is true of a given function it is written as `noexcept` rather than left to this document, so a later change that breaks it fails to compile instead of silently contradicting the decision. `crc16` is marked; the framer and decoder are expected to be.
-- Decoding does not allocate. It writes into a fixed-size struct owned by the caller, and every failure payload is a few bytes.
+- Decoding does not allocate. It takes the whole frame as a span and returns a fixed-size struct by value, and every failure payload is a few bytes. See [0006](0006-decode.md) for the signature.
 - The framer returns `std::variant<Found, Incomplete, Discard>`, with `Found{length}`, `Incomplete{}` empty, and `Discard{count}`. Each alternative carries exactly the payload its outcome has.
 - The framer only inspects the front of the buffer. It never reports a found frame at a nonzero offset.
 - `Error` is a struct containing an error code and a `uint8_t detail` field. The detail is unused for a bad checksum, but the simple fixed-size representation keeps decoder control flow and call sites straightforward.
-- The decoder uses a locally implemented `Result<T, E>` template with distinct payload and error types. The framer does not: it has three outcomes, not two.
+- The decoder uses a locally implemented `Result<T, E>` template with distinct payload and error types. The framer does not: it has three outcomes, not two. See [0005](0005-result-type.md) for its shape.
 - Unknown message IDs do not carry the raw payload, which keeps the decoder allocation-free.
 - A known message id with the wrong payload length is its own outcome, not folded into unknown id. The caller's action differs: an unknown id is skipped in confidence, a length mismatch is counted as a defect.
 - After a bad checksum the caller drops `kResyncShift`, the smallest offset at which the sync word could begin again, not the frame length, and calls the framer again. It is two for `A5 C3`, but it is derived from the sync word's bytes. See [Recovery after a rejected frame](#recovery-after-a-rejected-frame).
@@ -51,6 +51,9 @@ The decoder returns a `Result<T, Error>` that returns either a decoded frame or 
 | Unsupported version | the version byte | discard this frame, log once, continue          |
 | Unknown message id  | the id           | skip this frame, continue with full confidence  |
 | Wrong payload length | the message id  | count it, skip this frame, continue             |
+| Malformed frame      | nothing          | count it as a caller/framer defect, fix the code; nothing to resynchronise |
+
+Malformed frame is distinct from a bad checksum: it means the span handed to `decode()` was never a frame-shaped object to begin with, so nothing about the link is implicated. See [0006](0006-decode.md) for the check itself and where it sits among the others.
 
 Note to the bad checksum and unknown message id cases: A bad checksum makes the length field untrustworthy, and the framer used that length to find the frame end, so the boundary itself is suspect. An unknown id sits inside a frame whose integrity is proven, so the boundary holds.
 

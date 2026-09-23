@@ -105,6 +105,8 @@ The CRC covers bytes 0 through 12+n-1: the sync word and header through the end 
 
 The sync word is inside the CRC on purpose. [0001](decisions/0001-error-strategy.md) has the framer resynchronise by scanning for the next sync word, and accepts that `A5 C3` inside a payload will sometimes cause a false start. That is only safe if a false start fails the CRC. Covering the sync word is what makes it fail: a frame read from the wrong offset has different bytes under the checksum, and passes about 1 time in 65536.
 
+`decode()` computes this span from the span's own size, never from the length field; see [0006](decisions/0006-decode.md#crc-coverage).
+
 Do not use the `residue=0x0000` from the catalogue entry. It only holds when the CRC is appended high byte first, and this format stores it low byte first. On the example frame below, appending big-endian gives `0x0000` but little-endian gives `0x2EC9`.
 
 ## Bit numbering
@@ -131,6 +133,8 @@ Message id `0x01`. The payload is 4 bytes.
 | 1          | Assisted   |
 | 2          | Autonomous |
 | 3          | Fault      |
+
+See [0006](decisions/0006-decode.md#decoded-types) for the `DriveMode` enum this maps to.
 
 ## Worked example
 
@@ -168,7 +172,7 @@ The example is normative: a conforming decoder maps that byte sequence to exactl
 
 ## Decoded values
 
-`decode` returns raw counts, not engineering units. A 12-bit sensor field arrives as a `uint16_t` holding 0..4095. See [0003-decoded-units.md](decisions/0003-decoded-units.md).
+`decode` returns raw counts, not engineering units. A 12-bit sensor field arrives as a `uint16_t` holding 0..4095. See [0003-decoded-units.md](decisions/0003-decoded-units.md) for the rule and [0006-decode.md](decisions/0006-decode.md#decoded-types) for the struct layout.
 
 The mappings below are **informative**. `tm_core` does not implement them, and a conversion function must live outside it. They are recorded here because a count is meaningless without the range it maps to.
 
