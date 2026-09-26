@@ -16,6 +16,8 @@ enum class ErrorCode : std::uint8_t {
 struct Error {
     ErrorCode code;
     std::uint8_t detail = 0;
+
+    friend constexpr bool operator==(const Error &, const Error &) = default;
 };
 } // namespace tlm
 
