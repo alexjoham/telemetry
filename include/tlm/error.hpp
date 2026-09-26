@@ -5,18 +5,18 @@
 
 namespace tlm {
 
-    enum class ErrorCode : std::uint8_t {
-        MalformedFrame,
-        BadChecksum,
-        UnsupportedVersion,
-        UnknownMessageId,
-        WrongPayloadLength,
-    };
+enum class ErrorCode : std::uint8_t {
+    MalformedFrame,
+    BadChecksum,
+    UnsupportedVersion,
+    UnknownMessageId,
+    WrongPayloadLength,
+};
 
-    struct Error {
-        ErrorCode code;
-        std::uint8_t detail = 0;
-    };
+struct Error {
+    ErrorCode code;
+    std::uint8_t detail = 0;
+};
 } // namespace tlm
 
 #endif // TLM_ERROR_HPP
