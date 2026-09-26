@@ -1,19 +1,22 @@
-#ifndef ERROR_CODE_HPP
-#define ERROR_CODE_HPP
+#ifndef TLM_ERROR_HPP
+#define TLM_ERROR_HPP
 
 #include <cstdint>
 
-enum class ErrorCode : std::uint8_t {
-    MalformedFrame,
-    BadChecksum,
-    UnsupportedVersion,
-    UnknownMessageId,
-    WrongPayloadLength,
-};
+namespace tlm {
 
-struct Error {
-    ErrorCode code;
-    std::uint8_t detail;
-};
+    enum class ErrorCode : std::uint8_t {
+        MalformedFrame,
+        BadChecksum,
+        UnsupportedVersion,
+        UnknownMessageId,
+        WrongPayloadLength,
+    };
 
-#endif // ERROR_CODE_HPP
+    struct Error {
+        ErrorCode code;
+        std::uint8_t detail = 0;
+    };
+} // namespace tlm
+
+#endif // TLM_ERROR_HPP
