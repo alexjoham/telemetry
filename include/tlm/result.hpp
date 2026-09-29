@@ -21,14 +21,10 @@ template <typename T, typename E> class [[nodiscard]] Result {
     }
 
     [[nodiscard]] constexpr const T *ok() const noexcept {
-        if (const T *pval = std::get_if<T>(&storage_))
-            return pval;
-        return nullptr;
+        return std::get_if<T>(&storage_);
     }
     [[nodiscard]] constexpr const E *err() const noexcept {
-        if (const E *perr = std::get_if<E>(&storage_))
-            return perr;
-        return nullptr;
+        return std::get_if<E>(&storage_);
     }
 
     template <typename OnOk, typename OnErr>
@@ -39,6 +35,7 @@ template <typename T, typename E> class [[nodiscard]] Result {
                 if constexpr (std::is_same_v<Alt, T>) {
                     return std::forward<OnOk>(on_ok)(arg);
                 } else {
+                    static_assert(std::is_same_v<Alt, E>);
                     return std::forward<OnErr>(on_err)(arg);
                 }
             },

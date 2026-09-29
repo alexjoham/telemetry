@@ -36,7 +36,7 @@ TEST(ResultTest, MatchOnValueResultCallsValueHandlerWithValue) {
 }
 
 TEST(ResultTest, MatchOnErrorResultCallsErrorHandlerWithError) {
-    const tlm::Error error{tlm::ErrorCode::MalformedFrame};
+    const tlm::Error error{tlm::ErrorCode::UnsupportedVersion, 7};
     const tlm::Result<int, tlm::Error> result{error};
     bool ok_called = false;
 
