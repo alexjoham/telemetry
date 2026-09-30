@@ -42,6 +42,8 @@ static_assert(alignof(VehicleState) == 2);
 // framing constants.
 inline constexpr std::size_t kVehicleStatePayloadSize = 4;
 
+inline constexpr std::byte kSupportedMessageId{0x01};
+
 struct DecodedFrame {
     FrameHeader frame_header;
     VehicleState vehicle_state;
@@ -68,6 +70,11 @@ decode(std::span<const std::byte> frame) noexcept {
     const std::byte version = frame[kVersionOffset];
     if (version != kSupportedVersion) {
         return Error{ErrorCode::UnsupportedVersion, std::to_integer<std::uint8_t>(version)};
+    }
+
+    const std::byte message_id = frame[kMessageIdOffset];
+    if (message_id != kSupportedMessageId) {
+        return Error{ErrorCode::UnknownMessageId, std::to_integer<std::uint8_t>(message_id)};
     }
     return DecodedFrame{};
 }
