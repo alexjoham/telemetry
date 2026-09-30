@@ -76,6 +76,10 @@ decode(std::span<const std::byte> frame) noexcept {
     if (message_id != kSupportedMessageId) {
         return Error{ErrorCode::UnknownMessageId, std::to_integer<std::uint8_t>(message_id)};
     }
+
+    if (stated_length != kVehicleStatePayloadSize) {
+        return Error{ErrorCode::WrongPayloadLength, std::to_integer<std::uint8_t>(message_id)};
+    }
     return DecodedFrame{};
 }
 
