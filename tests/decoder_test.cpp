@@ -115,6 +115,22 @@ TEST(DecoderTest, UnsupportedVersionUnderBadCrcIsBadChecksum) {
     EXPECT_EQ(error->code, tlm::ErrorCode::BadChecksum);
 }
 
+// Gate 2 before gate 3: the length field stays untrusted content until the CRC covering it has
+// passed, so the same disagreement without a restamp is a bad checksum.
+TEST(DecoderTest, LengthFieldDisagreeingUnderBadCrcIsBadChecksum) {
+    constexpr auto kFrame = [] {
+        auto f = kWorkedExample;
+        f[tlm::kLengthFieldOffset] = std::byte{0x00};
+        return f;
+    }();
+
+    const tlm::Result<tlm::DecodedFrame, tlm::Error> result = tlm::decode(kFrame);
+
+    const tlm::Error *error = result.err();
+    ASSERT_NE(error, nullptr);
+    EXPECT_EQ(error->code, tlm::ErrorCode::BadChecksum);
+}
+
 // Gate 3: the length field claims a 0-byte payload, the span carries 4.
 TEST(DecoderTest, LengthFieldDisagreeingWithSpanIsMalformed) {
     constexpr auto kFrame = [] {
@@ -220,6 +236,24 @@ TEST(DecoderTest, EmptyPayloadForVehicleStateIsWrongPayloadLength) {
         std::array<std::byte, tlm::kFixedHeaderSize + tlm::kCrcSize> f{};
         std::copy_n(kWorkedExample.begin(), tlm::kFixedHeaderSize, f.begin());
         f[tlm::kLengthFieldOffset] = std::byte{0x00};
+        return WithValidCrc(f);
+    }();
+
+    const tlm::Result<tlm::DecodedFrame, tlm::Error> result = tlm::decode(kFrame);
+
+    const tlm::Error *error = result.err();
+    ASSERT_NE(error, nullptr);
+    EXPECT_EQ(error->code, tlm::ErrorCode::WrongPayloadLength);
+    EXPECT_EQ(error->detail, std::uint8_t{0x01});
+}
+
+// Gate 6 from above, where a < comparison would let the frame through.
+TEST(DecoderTest, OverlongPayloadForVehicleStateIsWrongPayloadLength) {
+    constexpr std::size_t kPayloadSize = kVehicleStatePayloadSize + 1;
+    constexpr auto kFrame = [] {
+        std::array<std::byte, tlm::kFixedHeaderSize + kPayloadSize + tlm::kCrcSize> f{};
+        std::copy_n(kWorkedExample.begin(), tlm::kFixedHeaderSize, f.begin());
+        f[tlm::kLengthFieldOffset] = static_cast<std::byte>(kPayloadSize);
         return WithValidCrc(f);
     }();
 
