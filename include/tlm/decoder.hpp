@@ -49,13 +49,27 @@ struct DecodedFrame {
     VehicleState vehicle_state;
 };
 
+namespace detail {
+
+// The wire's byte order is stated here once rather than at each multi-byte field.
+template <typename T>
+[[nodiscard]] constexpr T ReadLe(std::span<const std::byte> frame, std::size_t offset) noexcept {
+    T value{};
+    for (std::size_t i = 0; i < sizeof(T); ++i) {
+        value = static_cast<T>(value | std::to_integer<T>(frame[offset + i]) << (8 * i));
+    }
+    return value;
+}
+
+} // namespace detail
+
 [[nodiscard]] constexpr Result<DecodedFrame, Error>
 decode(std::span<const std::byte> frame) noexcept {
-    if (frame.size() < kFixedHeaderSize + kCrcSize) {
+    const std::size_t total_length = frame.size();
+    if (total_length < kFixedHeaderSize + kCrcSize) {
         return Error{ErrorCode::MalformedFrame};
     }
 
-    const std::size_t total_length = frame.size();
     const std::uint16_t crc = crc16(frame.first(total_length - kCrcSize));
     if (!(frame[total_length - kCrcSize] == static_cast<std::byte>(crc & 0xFF) &&
           frame[total_length - 1] == static_cast<std::byte>(crc >> 8))) {
@@ -63,7 +77,7 @@ decode(std::span<const std::byte> frame) noexcept {
     }
 
     const std::size_t stated_length = std::to_integer<std::size_t>(frame[kLengthFieldOffset]);
-    if (kFixedHeaderSize + stated_length + kCrcSize != frame.size()) {
+    if (kFixedHeaderSize + stated_length + kCrcSize != total_length) {
         return Error{ErrorCode::MalformedFrame};
     }
 
@@ -80,7 +94,25 @@ decode(std::span<const std::byte> frame) noexcept {
     if (stated_length != kVehicleStatePayloadSize) {
         return Error{ErrorCode::WrongPayloadLength, std::to_integer<std::uint8_t>(message_id)};
     }
-    return DecodedFrame{};
+
+    const FrameHeader frame_header{
+        .version = std::to_integer<std::uint8_t>(version),
+        .message_id = std::to_integer<std::uint8_t>(message_id),
+        .sequence = detail::ReadLe<std::uint16_t>(frame, kSequenceNumberOffset),
+        .timestamp = detail::ReadLe<std::uint32_t>(frame, kTimestampOffset),
+    };
+
+    // Bit-packed across all four bytes, not byte-aligned. See format.md's VehicleState table.
+    const std::uint32_t payload = detail::ReadLe<std::uint32_t>(frame, kFixedHeaderSize);
+    const VehicleState vehicle_state{
+        .actuator_flags = static_cast<std::uint8_t>(payload & 0xF),
+        // Two bits, and DriveMode defines all four values, so the cast is total.
+        .drive_mode = static_cast<DriveMode>((payload >> 4) & 0x3),
+        .steering_count = static_cast<std::uint16_t>((payload >> 6) & 0xFFF),
+        .brake_count = static_cast<std::uint16_t>((payload >> 18) & 0xFFF),
+    };
+
+    return DecodedFrame{frame_header, vehicle_state};
 }
 
 } // namespace tlm

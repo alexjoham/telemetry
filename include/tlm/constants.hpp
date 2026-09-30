@@ -12,6 +12,8 @@ inline constexpr std::byte kSyncByte1{0xC3};
 
 inline constexpr std::size_t kVersionOffset = 2;
 inline constexpr std::size_t kMessageIdOffset = 3;
+inline constexpr std::size_t kSequenceNumberOffset = 4;
+inline constexpr std::size_t kTimestampOffset = 6;
 inline constexpr std::size_t kLengthFieldOffset = 10;
 inline constexpr std::size_t kReservedOffset = 11;
 
