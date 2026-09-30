@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 #include <span>
 
+namespace {
+
 // Stamps the correct little-endian CRC, so a fixture can vary a byte without one computed by hand.
 template <std::size_t N>
 constexpr std::array<std::byte, N> WithValidCrc(std::array<std::byte, N> frame) {
@@ -24,11 +26,6 @@ constexpr std::array<std::byte, N> WithValidCrc(std::array<std::byte, N> frame) 
 // Restamping the normative frame reproduces it byte for byte.
 static_assert(WithValidCrc(kWorkedExample) == kWorkedExample);
 
-constexpr std::size_t kVersionOffset = 2;
-constexpr std::size_t kMessageIdOffset = 3;
-constexpr std::size_t kReservedOffset = 11;
-constexpr std::size_t kVehicleStatePayloadSize = 4;
-
 // The worked example's decoded fields.
 void ExpectWorkedExampleFields(const tlm::DecodedFrame &frame) {
     EXPECT_EQ(frame.frame_header.version, std::uint8_t{1});
@@ -40,6 +37,8 @@ void ExpectWorkedExampleFields(const tlm::DecodedFrame &frame) {
     EXPECT_EQ(frame.vehicle_state.steering_count, std::uint16_t{1443});
     EXPECT_EQ(frame.vehicle_state.brake_count, std::uint16_t{3231});
 }
+
+} // namespace
 
 TEST(DecoderTest, WorkedExampleDecodesToSpecValues) {
     const tlm::Result<tlm::DecodedFrame, tlm::Error> result = tlm::decode(kWorkedExample);
@@ -104,7 +103,7 @@ TEST(DecoderTest, CorruptSyncWordIsBadChecksum) {
 TEST(DecoderTest, UnsupportedVersionUnderBadCrcIsBadChecksum) {
     constexpr auto kFrame = [] {
         auto f = kWorkedExample;
-        f[kVersionOffset] = std::byte{0x02};
+        f[tlm::kVersionOffset] = std::byte{0x02};
         return f;
     }();
 
@@ -165,7 +164,7 @@ TEST(DecoderTest, CrcCoverageComesFromSpanSizeNotLengthField) {
 TEST(DecoderTest, UnsupportedVersionIsRejected) {
     constexpr auto kFrame = [] {
         auto f = kWorkedExample;
-        f[kVersionOffset] = std::byte{0x02};
+        f[tlm::kVersionOffset] = std::byte{0x02};
         return WithValidCrc(f);
     }();
 
@@ -181,7 +180,7 @@ TEST(DecoderTest, UnsupportedVersionIsRejected) {
 TEST(DecoderTest, UnknownMessageIdIsRejected) {
     constexpr auto kFrame = [] {
         auto f = kWorkedExample;
-        f[kMessageIdOffset] = std::byte{0x02};
+        f[tlm::kMessageIdOffset] = std::byte{0x02};
         return WithValidCrc(f);
     }();
 
@@ -197,8 +196,8 @@ TEST(DecoderTest, UnknownMessageIdIsRejected) {
 TEST(DecoderTest, UnsupportedVersionOutranksUnknownMessageId) {
     constexpr auto kFrame = [] {
         auto f = kWorkedExample;
-        f[kVersionOffset] = std::byte{0x02};
-        f[kMessageIdOffset] = std::byte{0x99};
+        f[tlm::kVersionOffset] = std::byte{0x02};
+        f[tlm::kMessageIdOffset] = std::byte{0x99};
         return WithValidCrc(f);
     }();
 
@@ -217,7 +216,7 @@ TEST(DecoderTest, UnknownMessageIdOutranksWrongPayloadLength) {
     constexpr auto kFrame = [] {
         std::array<std::byte, tlm::kFixedHeaderSize + kPayloadSize + tlm::kCrcSize> f{};
         std::copy_n(kWorkedExample.begin(), tlm::kFixedHeaderSize, f.begin());
-        f[kMessageIdOffset] = std::byte{0x02};
+        f[tlm::kMessageIdOffset] = std::byte{0x02};
         f[tlm::kLengthFieldOffset] = static_cast<std::byte>(kPayloadSize);
         return WithValidCrc(f);
     }();
@@ -249,7 +248,7 @@ TEST(DecoderTest, EmptyPayloadForVehicleStateIsWrongPayloadLength) {
 
 // Gate 6 from above, where a < comparison would let the frame through.
 TEST(DecoderTest, OverlongPayloadForVehicleStateIsWrongPayloadLength) {
-    constexpr std::size_t kPayloadSize = kVehicleStatePayloadSize + 1;
+    constexpr std::size_t kPayloadSize = tlm::kVehicleStatePayloadSize + 1;
     constexpr auto kFrame = [] {
         std::array<std::byte, tlm::kFixedHeaderSize + kPayloadSize + tlm::kCrcSize> f{};
         std::copy_n(kWorkedExample.begin(), tlm::kFixedHeaderSize, f.begin());
@@ -269,7 +268,7 @@ TEST(DecoderTest, OverlongPayloadForVehicleStateIsWrongPayloadLength) {
 TEST(DecoderTest, ReservedHeaderByteIsIgnored) {
     constexpr auto kFrame = [] {
         auto f = kWorkedExample;
-        f[kReservedOffset] = std::byte{0xFF};
+        f[tlm::kReservedOffset] = std::byte{0xFF};
         return WithValidCrc(f);
     }();
 
@@ -284,7 +283,7 @@ TEST(DecoderTest, ReservedHeaderByteIsIgnored) {
 TEST(DecoderTest, ReservedPayloadBitsAreIgnored) {
     constexpr auto kFrame = [] {
         auto f = kWorkedExample;
-        f[tlm::kFixedHeaderSize + kVehicleStatePayloadSize - 1] |= std::byte{0xC0};
+        f[tlm::kFixedHeaderSize + tlm::kVehicleStatePayloadSize - 1] |= std::byte{0xC0};
         return WithValidCrc(f);
     }();
 
@@ -329,7 +328,7 @@ TEST(DecoderTest, FullScalePayloadDecodesToMaxima) {
     constexpr auto kFrame = [] {
         auto f = kWorkedExample;
         for (std::size_t i = tlm::kFixedHeaderSize;
-             i < tlm::kFixedHeaderSize + kVehicleStatePayloadSize; ++i) {
+             i < tlm::kFixedHeaderSize + tlm::kVehicleStatePayloadSize; ++i) {
             f[i] = std::byte{0xFF};
         }
         return WithValidCrc(f);

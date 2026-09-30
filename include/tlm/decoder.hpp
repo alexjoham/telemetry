@@ -36,6 +36,10 @@ struct VehicleState {
 static_assert(sizeof(VehicleState) == 6);
 static_assert(alignof(VehicleState) == 2);
 
+// The payload length message id 0x01 defines. Message-specific, so it does not live with the
+// framing constants.
+inline constexpr std::size_t kVehicleStatePayloadSize = 4;
+
 struct DecodedFrame {
     FrameHeader frame_header;
     VehicleState vehicle_state;
