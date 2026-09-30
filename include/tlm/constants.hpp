@@ -15,6 +15,8 @@ inline constexpr std::size_t kMessageIdOffset = 3;
 inline constexpr std::size_t kLengthFieldOffset = 10;
 inline constexpr std::size_t kReservedOffset = 11;
 
+inline constexpr std::byte kSupportedVersion{0x01};
+
 inline constexpr std::size_t kFixedHeaderSize = 12;
 inline constexpr std::size_t kCrcSize = 2;
 

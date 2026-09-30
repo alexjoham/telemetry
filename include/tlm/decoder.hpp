@@ -64,6 +64,11 @@ decode(std::span<const std::byte> frame) noexcept {
     if (kFixedHeaderSize + stated_length + kCrcSize != frame.size()) {
         return Error{ErrorCode::MalformedFrame};
     }
+
+    const std::byte version = frame[kVersionOffset];
+    if (version != kSupportedVersion) {
+        return Error{ErrorCode::UnsupportedVersion, std::to_integer<std::uint8_t>(version)};
+    }
     return DecodedFrame{};
 }
 
