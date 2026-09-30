@@ -70,9 +70,8 @@ decode(std::span<const std::byte> frame) noexcept {
         return Error{ErrorCode::MalformedFrame};
     }
 
-    const std::uint16_t crc = crc16(frame.first(total_length - kCrcSize));
-    if (!(frame[total_length - kCrcSize] == static_cast<std::byte>(crc & 0xFF) &&
-          frame[total_length - 1] == static_cast<std::byte>(crc >> 8))) {
+    const std::size_t crc_offset = total_length - kCrcSize;
+    if (crc16(frame.first(crc_offset)) != detail::ReadLe<std::uint16_t>(frame, crc_offset)) {
         return Error{ErrorCode::BadChecksum};
     }
 
