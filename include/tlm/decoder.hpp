@@ -1,6 +1,7 @@
 #ifndef TLM_DECODER_HPP
 #define TLM_DECODER_HPP
 
+#include "constants.hpp"
 #include "error.hpp"
 #include "result.hpp"
 #include <cstddef>
@@ -46,7 +47,10 @@ struct DecodedFrame {
 };
 
 [[nodiscard]] constexpr Result<DecodedFrame, Error>
-decode(std::span<const std::byte> /*frame*/) noexcept {
+decode(std::span<const std::byte> frame) noexcept {
+    if (frame.size() < kFixedHeaderSize + kCrcSize) {
+        return Error{ErrorCode::MalformedFrame};
+    }
     return DecodedFrame{};
 }
 
