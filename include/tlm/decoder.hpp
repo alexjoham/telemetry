@@ -55,7 +55,7 @@ decode(std::span<const std::byte> frame) noexcept {
     const std::size_t total_length = frame.size();
     const std::uint16_t crc = crc16(frame.first(total_length - kCrcSize));
     if (!(frame[total_length - kCrcSize] == static_cast<std::byte>(crc & 0xFF) &&
-          frame[total_length - kCrcSize - 1] == static_cast<std::byte>(crc >> 8))) {
+          frame[total_length - 1] == static_cast<std::byte>(crc >> 8))) {
         return Error{ErrorCode::BadChecksum};
     }
     return DecodedFrame{};
