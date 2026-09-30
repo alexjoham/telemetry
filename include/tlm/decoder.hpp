@@ -42,7 +42,7 @@ static_assert(alignof(VehicleState) == 2);
 // framing constants.
 inline constexpr std::size_t kVehicleStatePayloadSize = 4;
 
-inline constexpr std::byte kSupportedMessageId{0x01};
+inline constexpr std::byte kVehicleStateMessageId{0x01};
 
 struct DecodedFrame {
     FrameHeader frame_header;
@@ -53,10 +53,10 @@ namespace detail {
 
 // The wire's byte order is stated here once rather than at each multi-byte field.
 template <typename T>
-[[nodiscard]] constexpr T ReadLe(std::span<const std::byte> frame, std::size_t offset) noexcept {
+[[nodiscard]] constexpr T read_le(std::span<const std::byte> frame, std::size_t offset) noexcept {
     T value{};
     for (std::size_t i = 0; i < sizeof(T); ++i) {
-        value = static_cast<T>(value | std::to_integer<T>(frame[offset + i]) << (8 * i));
+        value = static_cast<T>(value | (std::to_integer<T>(frame[offset + i]) << (8 * i)));
     }
     return value;
 }
@@ -71,7 +71,7 @@ decode(std::span<const std::byte> frame) noexcept {
     }
 
     const std::size_t crc_offset = total_length - kCrcSize;
-    if (crc16(frame.first(crc_offset)) != detail::ReadLe<std::uint16_t>(frame, crc_offset)) {
+    if (crc16(frame.first(crc_offset)) != detail::read_le<std::uint16_t>(frame, crc_offset)) {
         return Error{ErrorCode::BadChecksum};
     }
 
@@ -86,7 +86,7 @@ decode(std::span<const std::byte> frame) noexcept {
     }
 
     const std::byte message_id = frame[kMessageIdOffset];
-    if (message_id != kSupportedMessageId) {
+    if (message_id != kVehicleStateMessageId) {
         return Error{ErrorCode::UnknownMessageId, std::to_integer<std::uint8_t>(message_id)};
     }
 
@@ -97,12 +97,12 @@ decode(std::span<const std::byte> frame) noexcept {
     const FrameHeader frame_header{
         .version = std::to_integer<std::uint8_t>(version),
         .message_id = std::to_integer<std::uint8_t>(message_id),
-        .sequence = detail::ReadLe<std::uint16_t>(frame, kSequenceNumberOffset),
-        .timestamp = detail::ReadLe<std::uint32_t>(frame, kTimestampOffset),
+        .sequence = detail::read_le<std::uint16_t>(frame, kSequenceNumberOffset),
+        .timestamp = detail::read_le<std::uint32_t>(frame, kTimestampOffset),
     };
 
     // Bit-packed across all four bytes, not byte-aligned. See format.md's VehicleState table.
-    const std::uint32_t payload = detail::ReadLe<std::uint32_t>(frame, kFixedHeaderSize);
+    const std::uint32_t payload = detail::read_le<std::uint32_t>(frame, kFixedHeaderSize);
     const VehicleState vehicle_state{
         .actuator_flags = static_cast<std::uint8_t>(payload & 0xF),
         // Two bits, and DriveMode defines all four values, so the cast is total.
