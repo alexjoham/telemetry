@@ -295,6 +295,35 @@ TEST(DecoderTest, ReservedPayloadBitsAreIgnored) {
     ExpectWorkedExampleFields(*frame);
 }
 
+// The two modes no other fixture reaches. Bits 4-5 sit between the actuator flags and the
+// steering angle, so both are asserted too and a mask off by one bit takes one of them with it.
+TEST(DecoderTest, ManualAndAssistedDriveModesDecode) {
+    constexpr auto kManual = [] {
+        auto f = kWorkedExample;
+        f[tlm::kFixedHeaderSize] &= std::byte{0xCF};
+        return WithValidCrc(f);
+    }();
+    constexpr auto kAssisted = [] {
+        auto f = kWorkedExample;
+        f[tlm::kFixedHeaderSize] = (f[tlm::kFixedHeaderSize] & std::byte{0xCF}) | std::byte{0x10};
+        return WithValidCrc(f);
+    }();
+
+    const tlm::Result<tlm::DecodedFrame, tlm::Error> manual = tlm::decode(kManual);
+    const tlm::DecodedFrame *manual_frame = manual.ok();
+    ASSERT_NE(manual_frame, nullptr);
+    EXPECT_EQ(manual_frame->vehicle_state.drive_mode, tlm::DriveMode::Manual);
+    EXPECT_EQ(manual_frame->vehicle_state.actuator_flags, std::uint8_t{0b1011});
+    EXPECT_EQ(manual_frame->vehicle_state.steering_count, std::uint16_t{1443});
+
+    const tlm::Result<tlm::DecodedFrame, tlm::Error> assisted = tlm::decode(kAssisted);
+    const tlm::DecodedFrame *assisted_frame = assisted.ok();
+    ASSERT_NE(assisted_frame, nullptr);
+    EXPECT_EQ(assisted_frame->vehicle_state.drive_mode, tlm::DriveMode::Assisted);
+    EXPECT_EQ(assisted_frame->vehicle_state.actuator_flags, std::uint8_t{0b1011});
+    EXPECT_EQ(assisted_frame->vehicle_state.steering_count, std::uint16_t{1443});
+}
+
 // All ones: every field at full scale, and the one DriveMode the worked example misses.
 TEST(DecoderTest, FullScalePayloadDecodesToMaxima) {
     constexpr auto kFrame = [] {

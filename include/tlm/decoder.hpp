@@ -20,10 +20,10 @@ static_assert(sizeof(FrameHeader) == 8);
 static_assert(alignof(FrameHeader) == 4);
 
 enum class DriveMode : std::uint8_t {
-    Manual,
-    Assisted,
-    Autonomous,
-    Fault,
+    Manual = 0,
+    Assisted = 1,
+    Autonomous = 2,
+    Fault = 3,
 };
 
 struct VehicleState {
