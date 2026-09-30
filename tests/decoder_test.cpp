@@ -38,6 +38,11 @@ void ExpectWorkedExampleFields(const tlm::DecodedFrame &frame) {
     EXPECT_EQ(frame.vehicle_state.brake_count, std::uint16_t{3231});
 }
 
+// Constant evaluation rejects undefined behaviour, so decoding the worked example here checks it
+// on every compiler and build type rather than only under the sanitiser jobs.
+constexpr auto kDecodedWorkedExample = tlm::decode(kWorkedExample);
+static_assert(kDecodedWorkedExample.ok() != nullptr);
+
 } // namespace
 
 TEST(DecoderTest, WorkedExampleDecodesToSpecValues) {
