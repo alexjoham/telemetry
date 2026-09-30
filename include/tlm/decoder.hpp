@@ -52,11 +52,17 @@ decode(std::span<const std::byte> frame) noexcept {
     if (frame.size() < kFixedHeaderSize + kCrcSize) {
         return Error{ErrorCode::MalformedFrame};
     }
+
     const std::size_t total_length = frame.size();
     const std::uint16_t crc = crc16(frame.first(total_length - kCrcSize));
     if (!(frame[total_length - kCrcSize] == static_cast<std::byte>(crc & 0xFF) &&
           frame[total_length - 1] == static_cast<std::byte>(crc >> 8))) {
         return Error{ErrorCode::BadChecksum};
+    }
+
+    const std::size_t stated_length = std::to_integer<std::size_t>(frame[kLengthFieldOffset]);
+    if (kFixedHeaderSize + stated_length + kCrcSize != frame.size()) {
+        return Error{ErrorCode::MalformedFrame};
     }
     return DecodedFrame{};
 }
