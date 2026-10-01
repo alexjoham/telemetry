@@ -45,3 +45,13 @@ Returns `Result<DecodedFrame, Error>` ([0005](0005-result-type.md)). `Error` is 
 `sizeof`/`alignof` for both were derived by hand, then pinned as `static_assert`s: `FrameHeader` packs to 8 bytes at 4-byte alignment, `VehicleState` to 6 bytes at 2-byte alignment, neither with padding at these field widths and orderings. Raw counts only, per [0003](0003-decoded-units.md).
 
 `DriveMode` is `enum class : std::uint8_t` with all four values from [VehicleState](../format.md#vehiclestate)'s drive-mode table defined, converted by a total `static_cast` from the 2-bit mask at bits 4-5, no `switch`, no `default:` — the mask has exactly four possible values and the table defines all four, so the cast cannot produce an enumerator the table doesn't cover. The comment at the cast site says so, since the totality is a fact about the mask's width, not something the line itself shows.
+
+## Equivalent mutants
+
+Three mutants survive every test, and no input can kill them while `kSupportedVersion` and `kVehicleStateMessageId` are both `0x01`:
+
+- Gate 4 compares the version against `kVehicleStateMessageId` instead of `kSupportedVersion`, which is the same comparison because both constants are `0x01`.
+- `FrameHeader::version` is filled from the message-id byte, which gives the same value because a frame that reaches extraction has passed gates 4 and 5, so both bytes are `0x01`.
+- Gate 6's `detail` carries the version byte instead of the message id, which gives the same value because a frame that reaches gate 6 has passed gates 4 and 5, so both bytes are `0x01`.
+
+All three become killable once a second version or message id exists, because the two bytes can then differ on a frame that passes the gates.
