@@ -26,6 +26,8 @@ template <typename... Ts> struct overloaded : Ts... {
 template <typename... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 } // namespace detail
 
+// An event is returned only after its bytes are dropped, and nullopt drops none, so offset_ never
+// passes data_.size() and rebuilding a Stream after consumed() loses and repeats nothing.
 class Stream {
   private:
     std::span<const std::byte> data_;
