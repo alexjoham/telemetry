@@ -73,7 +73,7 @@ class Stream {
         return offset_;
     }
 
-    explicit constexpr Stream(std::span<const std::byte> data) : data_(data) {
+    explicit constexpr Stream(std::span<const std::byte> data) noexcept : data_(data) {
     }
 };
 
