@@ -42,7 +42,7 @@ Returns `Result<DecodedFrame, Error>` ([0005](0005-result-type.md)). `Error` is 
 
 `FrameHeader` (version, message id, sequence, timestamp) and `VehicleState` (actuator flags, drive mode, steering count, brake count) are returned together as `DecodedFrame`. When a second message id exists, the payload becomes a variant; the header does not change.
 
-`sizeof`/`alignof` for both were derived by hand, then pinned as `static_assert`s: `FrameHeader` packs to 8 bytes at 4-byte alignment, `VehicleState` to 6 bytes at 2-byte alignment, neither with padding at these field widths and orderings. Raw counts only, per [0003](0003-decoded-units.md).
+`sizeof`/`alignof` for all three were derived by hand, then pinned as `static_assert`s: `FrameHeader` packs to 8 bytes at 4-byte alignment, `VehicleState` to 6 bytes at 2-byte alignment, neither with padding at these field widths and orderings. `DecodedFrame` takes the larger alignment, 4, so `vehicle_state` sits at offset 8 with no gap before it, and the 14 bytes of members round up to `sizeof` 16, with 2 bytes of tail padding. `offsetof` is pinned as well, since a reordered member would move it without changing `sizeof`. Raw counts only, per [0003](0003-decoded-units.md).
 
 `DriveMode` is `enum class : std::uint8_t` with all four values from [VehicleState](../format.md#vehiclestate)'s drive-mode table defined, converted by a total `static_cast` from the 2-bit mask at bits 4-5, no `switch`, no `default:` — the mask has exactly four possible values and the table defines all four, so the cast cannot produce an enumerator the table doesn't cover. The comment at the cast site says so, since the totality is a fact about the mask's width, not something the line itself shows.
 
