@@ -49,6 +49,10 @@ struct DecodedFrame {
     VehicleState vehicle_state;
 };
 
+static_assert(sizeof(DecodedFrame) == 16);
+static_assert(alignof(DecodedFrame) == 4);
+static_assert(offsetof(DecodedFrame, vehicle_state) == 8);
+
 namespace detail {
 
 // The wire's byte order is stated here once rather than at each multi-byte field.
