@@ -1,6 +1,7 @@
 #include "tlm/error.hpp"
 #include "tlm/result.hpp"
 #include <gtest/gtest.h>
+#include <utility>
 
 TEST(ResultTest, ValueResultExposesValueAndNoError) {
     const tlm::Result<int, tlm::Error> result{42};
@@ -49,4 +50,28 @@ TEST(ResultTest, MatchOnErrorResultCallsErrorHandlerWithError) {
 
     EXPECT_EQ(seen, error);
     EXPECT_FALSE(ok_called);
+}
+
+using IntResult = tlm::Result<int, tlm::Error>;
+
+template <typename R>
+concept OkCallableOnRvalue = requires { std::declval<const R &&>().ok(); };
+
+template <typename R>
+concept ErrCallableOnRvalue = requires { std::declval<const R &&>().err(); };
+
+template <typename R>
+concept OkCallableOnLvalue = requires { std::declval<const R &>().ok(); };
+
+template <typename R>
+concept ErrCallableOnLvalue = requires { std::declval<const R &>().err(); };
+
+TEST(ResultTest, AccessorsAreNotCallableOnTemporaryResult) {
+    EXPECT_FALSE(OkCallableOnRvalue<IntResult>);
+    EXPECT_FALSE(ErrCallableOnRvalue<IntResult>);
+}
+
+TEST(ResultTest, AccessorsAreCallableOnNamedResult) {
+    EXPECT_TRUE(OkCallableOnLvalue<IntResult>);
+    EXPECT_TRUE(ErrCallableOnLvalue<IntResult>);
 }

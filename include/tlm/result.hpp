@@ -20,12 +20,15 @@ template <typename T, typename E> class [[nodiscard]] Result {
         : storage_{std::move(error)} {
     }
 
-    [[nodiscard]] constexpr const T *ok() const noexcept {
+    [[nodiscard]] constexpr const T *ok() const & noexcept {
         return std::get_if<T>(&storage_);
     }
-    [[nodiscard]] constexpr const E *err() const noexcept {
+    constexpr const T *ok() const && = delete;
+
+    [[nodiscard]] constexpr const E *err() const & noexcept {
         return std::get_if<E>(&storage_);
     }
+    constexpr const E *err() const && = delete;
 
     template <typename OnOk, typename OnErr>
     constexpr decltype(auto) match(OnOk &&on_ok, OnErr &&on_err) const {
