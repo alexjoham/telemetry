@@ -53,6 +53,8 @@ The decoder returns a `Result<T, Error>` that returns either a decoded frame or 
 | Wrong payload length | the message id  | count it, skip this frame, continue             |
 | Malformed frame      | nothing          | count it as a caller/framer defect, fix the code; nothing to resynchronise |
 
+Superseded in part by [0007](0007-stream.md): the stream maps Malformed frame to `Resync`, dropping `kResyncShift` like a bad checksum, so "nothing to resynchronise" in the row above no longer holds for a caller using the stream.
+
 Malformed frame is distinct from a bad checksum: it means the span handed to `decode()` was never a frame-shaped object to begin with, so nothing about the link is implicated. See [0006](0006-decode.md) for the check itself and where it sits among the others.
 
 Note to the bad checksum and unknown message id cases: A bad checksum makes the length field untrustworthy, and the framer used that length to find the frame end, so the boundary itself is suspect. An unknown id sits inside a frame whose integrity is proven, so the boundary holds.
