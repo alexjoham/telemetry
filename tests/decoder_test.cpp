@@ -1,6 +1,5 @@
 #include "test_frames.hpp"
 #include "tlm/constants.hpp"
-#include "tlm/crc.hpp"
 #include "tlm/decoder.hpp"
 #include "tlm/error.hpp"
 #include "tlm/result.hpp"
@@ -12,16 +11,6 @@
 #include <span>
 
 namespace {
-
-// Stamps the correct little-endian CRC, so a fixture can vary a byte without one computed by hand.
-template <std::size_t N>
-constexpr std::array<std::byte, N> WithValidCrc(std::array<std::byte, N> frame) {
-    const std::uint16_t crc =
-        tlm::crc16(std::span<const std::byte>{frame}.first(N - tlm::kCrcSize));
-    frame[N - 2] = static_cast<std::byte>(crc & 0xFF);
-    frame[N - 1] = static_cast<std::byte>(crc >> 8);
-    return frame;
-}
 
 // Restamping the normative frame reproduces it byte for byte.
 static_assert(WithValidCrc(kWorkedExample) == kWorkedExample);
