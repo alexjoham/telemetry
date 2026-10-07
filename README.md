@@ -18,6 +18,8 @@ Swap `debug` for `release` or `asan` to use the other presets. `asan` builds wit
 
 Run both before pushing — CI (`.github/workflows/ci.yml`) runs clang-format-18 and clang-tidy-18 and fails on any diff or warning.
 
+`tools/check.sh` runs both plus the build, with Homebrew's `llvm@18` (set `LLVM_BIN` elsewhere). To run it on every push, put `exec tools/check.sh` in `.git/hooks/pre-push` and `chmod +x` it.
+
 ### clang-format
 
 Check only, no files changed (matches the CI job):
