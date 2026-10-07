@@ -4,13 +4,22 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <system_error>
 #include <vector>
 
 namespace tlm::io {
 
 Result<std::vector<std::byte>, IoError> read_file(const std::filesystem::path &path) {
+    std::error_code ec;
+    const bool regular = std::filesystem::is_regular_file(path, ec);
+    if (ec) {
+        return IoError::CannotOpen;
+    }
+    if (!regular) {
+        return IoError::NotARegularFile;
+    }
     if (std::ifstream in{path, std::ios::binary | std::ios::ate}) {
-        auto size = in.tellg();
+        const auto size = in.tellg();
         if (size == -1) {
             return IoError::ReadFailed;
         }
@@ -18,9 +27,8 @@ Result<std::vector<std::byte>, IoError> read_file(const std::filesystem::path &p
         in.seekg(0);
         if (!in.read(reinterpret_cast<char *>(input.data()), size)) {
             return IoError::ReadFailed;
-        } else {
-            return input;
         }
+        return input;
     }
     return IoError::CannotOpen;
 }
