@@ -146,6 +146,47 @@ TEST(StreamTest, FalseSyncWordYieldsResyncThenDiscardThenFrame) {
     EXPECT_EQ(pulled.consumed_after, expected_consumed);
 }
 
+// The flip is in frame 1's payload, so the framer still claims 18 bytes and only the CRC rejects
+// them. Frame 2 differs in sequence, so decoding frame 1 by mistake cannot pass for recovery.
+TEST(StreamTest, CorruptedFrameIsDroppedAndTheNextOneDecoded) {
+    constexpr auto kFirst = WithValidCrc(kWorkedExample);
+    constexpr auto kSecond = [] {
+        auto f = kWorkedExample;
+        f[tlm::kSequenceNumberOffset] = std::byte{0x42};
+        return WithValidCrc(f);
+    }();
+    constexpr auto kBuffer = [&] {
+        std::array<std::byte, 2 * kWorkedExampleLength> buffer{};
+        std::copy(kFirst.begin(), kFirst.end(), buffer.begin());
+        std::copy(kSecond.begin(), kSecond.end(),
+                  buffer.begin() + static_cast<std::ptrdiff_t>(kWorkedExampleLength));
+        buffer[tlm::kFixedHeaderSize] ^= std::byte{0xFF};
+        return buffer;
+    }();
+
+    // pullAll stops only on nullopt, so three events means next() returned nullopt after the third.
+    const Pulled pulled = pullAll(kBuffer, kWorkedExampleLength);
+    ASSERT_EQ(pulled.events.size(), 3U);
+
+    const auto *const resync = std::get_if<tlm::Resync>(&pulled.events[0]);
+    ASSERT_NE(resync, nullptr);
+    EXPECT_EQ(resync->error.code, tlm::ErrorCode::BadChecksum);
+    EXPECT_EQ(resync->count, 2U);
+
+    // The rest of frame 1 after the shift: no A5 in it, so the next candidate is frame 2's sync.
+    const auto *const discard = std::get_if<tlm::Discard>(&pulled.events[1]);
+    ASSERT_NE(discard, nullptr);
+    EXPECT_EQ(discard->count, 16U);
+
+    const auto *const decoded = std::get_if<tlm::DecodedFrame>(&pulled.events[2]);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->frame_header.sequence, std::uint16_t{40002});
+
+    const std::vector<std::size_t> expected_consumed{2, 18, 36};
+    EXPECT_EQ(pulled.consumed_after, expected_consumed);
+    EXPECT_EQ(pulled.consumed_after.back(), kBuffer.size());
+}
+
 TEST(StreamTest, UnsupportedVersionIsSkippedWithoutResyncOrDiscard) {
     constexpr auto kRejected = [] {
         auto f = kWorkedExample;
