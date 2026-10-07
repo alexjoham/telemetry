@@ -70,3 +70,13 @@ TEST(IoTest, WorkedExampleFromFileYieldsOneDecodedFrame) {
     EXPECT_EQ(decoded->frame_header.sequence, std::uint16_t{40001});
     EXPECT_FALSE(stream.next().has_value());
 }
+
+TEST(IoTest, ReadFileOfDirectoryReturnsNotARegularFile) {
+    const std::filesystem::path path = std::filesystem::temp_directory_path();
+
+    const auto result = tlm::io::read_file(path);
+
+    const tlm::io::IoError *const error = result.err();
+    ASSERT_NE(error, nullptr);
+    EXPECT_EQ(*error, tlm::io::IoError::NotARegularFile);
+}

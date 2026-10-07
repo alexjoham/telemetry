@@ -9,7 +9,7 @@
 
 namespace tlm::io {
 
-enum class IoError : std::uint8_t { CannotOpen, ReadFailed };
+enum class IoError : std::uint8_t { CannotOpen, ReadFailed, NotARegularFile };
 
 [[nodiscard]] Result<std::vector<std::byte>, IoError> read_file(const std::filesystem::path &path);
 
