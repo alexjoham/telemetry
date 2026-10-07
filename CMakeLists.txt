@@ -14,6 +14,13 @@ add_library(tm_core INTERFACE)
 target_include_directories(tm_core INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(tm_core INTERFACE cxx_std_20)
 
+add_library(tm_io STATIC io/src/read_file.cpp)
+target_include_directories(tm_io PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/io/include)
+target_link_libraries(tm_io
+    PUBLIC  tm_core
+    PRIVATE tm_warnings
+)
+
 
 # Headers as their own TUs, linked by nothing: misc-include-cleaner only inspects a TU's main file.
 # CONFIGURE_DEPENDS, or a header added after the last configure is silently exempt.
@@ -25,6 +32,14 @@ add_library(tm_header_tus OBJECT ${TM_HEADERS})
 target_include_directories(tm_header_tus PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_compile_features(tm_header_tus PRIVATE cxx_std_20)
 target_link_libraries(tm_header_tus PRIVATE tm_warnings)
+
+# Separate from tm_header_tus so core headers never see io/include.
+file(GLOB_RECURSE TM_IO_HEADERS CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/io/include/*.hpp
+)
+set_source_files_properties(${TM_IO_HEADERS} PROPERTIES LANGUAGE CXX)
+add_library(tm_io_header_tus OBJECT ${TM_IO_HEADERS})
+target_link_libraries(tm_io_header_tus PRIVATE tm_io tm_warnings)
 
 
 include(FetchContent)
@@ -48,6 +63,7 @@ add_executable(tm_tests
     tests/result_test.cpp
     tests/decoder_test.cpp
     tests/stream_test.cpp
+    tests/io_test.cpp
 )
-target_link_libraries(tm_tests PRIVATE tm_core tm_warnings GTest::gtest_main)
+target_link_libraries(tm_tests PRIVATE tm_core tm_io tm_warnings GTest::gtest_main)
 gtest_discover_tests(tm_tests)
