@@ -57,6 +57,13 @@ TEST(FramerTest, BufferWithoutSyncWordIsDiscardedWhole) {
     EXPECT_EQ(std::get<tlm::Discard>(result).count, std::size_t{10});
 }
 
+TEST(FramerTest, TwoNonSyncBytesAreDiscarded) {
+    constexpr std::array<std::byte, 2> kBuffer{std::byte{0x00}, std::byte{0x00}};
+    const tlm::FrameResult result = tlm::frame(kBuffer);
+    ASSERT_TRUE(std::holds_alternative<tlm::Discard>(result));
+    EXPECT_EQ(std::get<tlm::Discard>(result).count, std::size_t{2});
+}
+
 // Pins the two-call contract: a run of garbage in front of a frame never comes back as a
 // single found-at-an-offset result. See 0001's rejected alternatives.
 TEST(FramerTest, GarbageBeforeFrameDiscardsFirstAndFindsSecond) {
