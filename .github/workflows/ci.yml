@@ -9,7 +9,7 @@ on:
 jobs:
   build-and-test:
     name: ${{ matrix.cxx }} (${{ matrix.build_type }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -39,7 +39,7 @@ jobs:
 
   asan:
     name: ASan + UBSan (${{ matrix.cxx }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +60,7 @@ jobs:
 
   lint:
     name: clang-tidy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Check out the repository
@@ -80,7 +80,7 @@ jobs:
 
   format:
     name: clang-format
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Check out the repository
