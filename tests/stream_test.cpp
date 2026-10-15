@@ -255,7 +255,7 @@ TEST(StreamTest, WrongPayloadLengthIsSkippedWithoutResyncOrDiscard) {
     const auto *const error = std::get_if<tlm::Error>(&pulled.events[0]);
     ASSERT_NE(error, nullptr);
     EXPECT_EQ(error->code, tlm::ErrorCode::WrongPayloadLength);
-    EXPECT_EQ(error->detail, std::uint8_t{0x01});
+    EXPECT_EQ(error->detail, std::uint8_t{0x05});
     EXPECT_EQ(pulled.consumed_after[0], kRejected.size());
 
     const auto *const decoded = std::get_if<tlm::DecodedFrame>(&pulled.events[1]);

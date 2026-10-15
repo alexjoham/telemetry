@@ -50,7 +50,7 @@ The decoder returns a `Result<T, Error>` that returns either a decoded frame or 
 | Bad checksum        | nothing          | drop `kResyncShift`, not the frame length; [see below](#recovery-after-a-rejected-frame) |
 | Unsupported version | the version byte | discard this frame, log once, continue          |
 | Unknown message id  | the id           | skip this frame, continue with full confidence  |
-| Wrong payload length | the message id  | count it, skip this frame, continue             |
+| Wrong payload length | the stated length | count it, skip this frame, continue             |
 | Malformed frame      | nothing          | count it as a caller/framer defect, fix the code; nothing to resynchronise |
 
 Superseded in part by [0007](0007-stream.md): the stream maps Malformed frame to `Resync`, dropping `kResyncShift` like a bad checksum, so "nothing to resynchronise" in the row above no longer holds for a caller using the stream.
@@ -59,7 +59,7 @@ Malformed frame is distinct from a bad checksum: it means the span handed to `de
 
 Note to the bad checksum and unknown message id cases: A bad checksum makes the length field untrustworthy, and the framer used that length to find the frame end, so the boundary itself is suspect. An unknown id sits inside a frame whose integrity is proven, so the boundary holds.
 
-Wrong payload length means a known message id carrying a payload that is not the size that id defines. The boundary holds for the same reason as the unknown id case, and the length field was itself covered by the CRC, so the caller continues normally. It is a separate outcome from unknown id because the two mean opposite things: an unknown id is forward compatibility working as intended, while a length mismatch means sender and receiver disagree about a message both claim to understand. That is a defect somewhere, so a receiver counts it rather than skipping it silently. The error carries the message id, because the useful action is attributing the defect to a message type; the length itself is in the frame the caller already holds. The expected length per id is in [format.md](../format.md#message-ids).
+Wrong payload length means a known message id carrying a payload that is not the size that id defines. The boundary holds for the same reason as the unknown id case, and the length field was itself covered by the CRC, so the caller continues normally. It is a separate outcome from unknown id because the two mean opposite things: an unknown id is forward compatibility working as intended, while a length mismatch means sender and receiver disagree about a message both claim to understand. That is a defect somewhere, so a receiver counts it rather than skipping it silently. The error carries the stated payload length. It originally carried the message id, to attribute the defect to a message type, but only one id passes the gate before this one, so that value was always `0x01` and said nothing. The length is what sender and receiver disagree about, and a `Stream` caller receives the `Error` as an event, not the frame's bytes. When a second message id exists, attribution matters again, and the choice between id and length is revisited then. The expected length per id is in [format.md](../format.md#message-ids).
 
 ## Recovery after a rejected frame
 
