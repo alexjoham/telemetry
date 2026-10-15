@@ -237,7 +237,7 @@ TEST(DecoderTest, EmptyPayloadForVehicleStateIsWrongPayloadLength) {
     const tlm::Error *error = result.err();
     ASSERT_NE(error, nullptr);
     EXPECT_EQ(error->code, tlm::ErrorCode::WrongPayloadLength);
-    EXPECT_EQ(error->detail, std::uint8_t{0x01});
+    EXPECT_EQ(error->detail, std::uint8_t{0x00});
 }
 
 // Gate 6 from above, where a < comparison would let the frame through.
@@ -255,7 +255,7 @@ TEST(DecoderTest, OverlongPayloadForVehicleStateIsWrongPayloadLength) {
     const tlm::Error *error = result.err();
     ASSERT_NE(error, nullptr);
     EXPECT_EQ(error->code, tlm::ErrorCode::WrongPayloadLength);
-    EXPECT_EQ(error->detail, std::uint8_t{0x01});
+    EXPECT_EQ(error->detail, std::uint8_t{0x05});
 }
 
 // The reserved byte is for a future version to use; rejecting on it would defeat that.
