@@ -48,10 +48,9 @@ Returns `Result<DecodedFrame, Error>` ([0005](0005-result-type.md)). `Error` is 
 
 ## Equivalent mutants
 
-Three mutants survive every test, and no input can kill them while `kSupportedVersion` and `kVehicleStateMessageId` are both `0x01`:
+Two mutants survive every test, and no input can kill them while `kSupportedVersion` and `kVehicleStateMessageId` are both `0x01`:
 
 - Gate 4 compares the version against `kVehicleStateMessageId` instead of `kSupportedVersion`, which is the same comparison because both constants are `0x01`.
 - `FrameHeader::version` is filled from the message-id byte, which gives the same value because a frame that reaches extraction has passed gates 4 and 5, so both bytes are `0x01`.
-- Gate 6's `detail` carries the version byte instead of the message id, which gives the same value because a frame that reaches gate 6 has passed gates 4 and 5, so both bytes are `0x01`.
 
-All three become killable once a second version or message id exists, because the two bytes can then differ on a frame that passes the gates.
+Both become killable once a second version or message id exists, because the two bytes can then differ on a frame that passes the gates.

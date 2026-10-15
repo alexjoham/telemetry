@@ -95,7 +95,8 @@ decode(std::span<const std::byte> frame) noexcept {
     }
 
     if (stated_length != kVehicleStatePayloadSize) {
-        return Error{ErrorCode::WrongPayloadLength, std::to_integer<std::uint8_t>(message_id)};
+        // Cannot narrow: stated_length is one byte of the frame (read above), so it is at most 255
+        return Error{ErrorCode::WrongPayloadLength, static_cast<std::uint8_t>(stated_length)};
     }
 
     const FrameHeader frame_header{
