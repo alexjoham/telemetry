@@ -79,7 +79,8 @@ decode(std::span<const std::byte> frame) noexcept {
         return Error{ErrorCode::BadChecksum};
     }
 
-    const std::size_t stated_length = std::to_integer<std::size_t>(frame[kLengthFieldOffset]);
+    const std::byte length_field = frame[kLengthFieldOffset];
+    const std::size_t stated_length = std::to_integer<std::size_t>(length_field);
     if (kFixedHeaderSize + stated_length + kCrcSize != total_length) {
         return Error{ErrorCode::MalformedFrame};
     }
@@ -95,8 +96,7 @@ decode(std::span<const std::byte> frame) noexcept {
     }
 
     if (stated_length != kVehicleStatePayloadSize) {
-        // Cannot narrow: stated_length is one byte of the frame (read above), so it is at most 255
-        return Error{ErrorCode::WrongPayloadLength, static_cast<std::uint8_t>(stated_length)};
+        return Error{ErrorCode::WrongPayloadLength, std::to_integer<std::uint8_t>(length_field)};
     }
 
     const FrameHeader frame_header{
