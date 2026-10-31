@@ -55,7 +55,7 @@ The full specification, including CRC coverage and a worked example, is in [docs
 ## How it is verified
 
 - CI builds with GCC and Clang, Debug and Release, with `-Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion -Werror`.
-- The test suite (60 tests) also runs under ASan and UBSan on both compilers.
+- The full test suite also runs under ASan and UBSan.
 - clang-tidy and clang-format run in CI and fail on any finding.
 - The CRC check value and the worked example are `static_assert`s, so they are checked at compile time.
 - Mutation testing of `include/tlm/stream.hpp` with `tools/mutate_stream.py`: 69 mutants, 52 killed, 0 survived, 17 equivalent (each with a stated reason), recorded in [d85b3df](https://github.com/alexjoham/telemetry/commit/d85b3df).
