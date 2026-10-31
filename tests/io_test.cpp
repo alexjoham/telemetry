@@ -1,5 +1,7 @@
 #include "test_frames.hpp"
 #include "tlm/decoder.hpp"
+#include "tlm/error.hpp"
+#include "tlm/framer.hpp"
 #include "tlm/io/read_file.hpp"
 #include "tlm/stream.hpp"
 #include <array>
@@ -69,6 +71,50 @@ TEST(IoTest, WorkedExampleFromFileYieldsOneDecodedFrame) {
     ASSERT_NE(decoded, nullptr);
     EXPECT_EQ(decoded->frame_header.sequence, std::uint16_t{40001});
     EXPECT_FALSE(stream.next().has_value());
+}
+
+TEST(IoTest, CorruptedFrameInFileIsResyncedAndTheNextOneDecoded) {
+    // Frame 2 differs from frame 1 in its sequence number (40002), so the final assertion shows
+    // which frame decoded. Frame 1 has one payload byte flipped, which can only fail the CRC.
+    std::array<std::byte, kWorkedExampleLength> second = kWorkedExample;
+    second[4] = std::byte{0x42};
+    second = WithValidCrc(second);
+    std::vector<std::byte> recorded(kWorkedExample.begin(), kWorkedExample.end());
+    recorded.insert(recorded.end(), second.begin(), second.end());
+    recorded[12] ^= std::byte{0x01};
+    const std::filesystem::path path = writeTempFile("tlm_io_test_corrupted_frame.bin", recorded);
+
+    const auto result = tlm::io::read_file(path);
+    std::filesystem::remove(path);
+    const std::vector<std::byte> *const bytes = result.ok();
+    ASSERT_NE(bytes, nullptr);
+
+    tlm::Stream stream{*bytes};
+
+    const std::optional<tlm::Event> first_event = stream.next();
+    ASSERT_TRUE(first_event.has_value());
+    const auto *const resync = std::get_if<tlm::Resync>(&*first_event);
+    ASSERT_NE(resync, nullptr);
+    EXPECT_EQ(resync->error, (tlm::Error{tlm::ErrorCode::BadChecksum, 0}));
+    EXPECT_EQ(resync->count, std::size_t{2});
+
+    // The 16 bytes left of the damaged frame hold no sync word.
+    const std::optional<tlm::Event> second_event = stream.next();
+    ASSERT_TRUE(second_event.has_value());
+    const auto *const discard = std::get_if<tlm::Discard>(&*second_event);
+    ASSERT_NE(discard, nullptr);
+    EXPECT_EQ(discard->count, std::size_t{16});
+
+    const std::optional<tlm::Event> third_event = stream.next();
+    ASSERT_TRUE(third_event.has_value());
+    const auto *const decoded = std::get_if<tlm::DecodedFrame>(&*third_event);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->frame_header.sequence, std::uint16_t{40002});
+
+    EXPECT_FALSE(stream.next().has_value());
+    // nullopt means "need more bytes" or "input ended"; for a finished file only this tells them
+    // apart.
+    EXPECT_EQ(stream.consumed(), bytes->size());
 }
 
 TEST(IoTest, ReadFileOfDirectoryReturnsNotARegularFile) {
